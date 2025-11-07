@@ -1,0 +1,1 @@
+Este projeto consiste no desenvolvimento de um Sistema Acadêmico Integrado que visa modernizar a gestão de turmas, alunos, aulas e atividades em uma instituição de ensino.
