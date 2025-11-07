@@ -18,13 +18,21 @@ senha_aluno = "123456"
 email_validado = None
 perfil_logado = None
 
-# Dimensões Padrão da Janela
+# HISTÓRICO DE CHAT SIMULADO (usado por Professor e Aluno)
+MENSAGENS_CHAT = [
+    {"perfil": "Sistema", "texto": "Início da Conversa. Mensagens são visíveis para todos os perfis."},
+    {"perfil": "Professor", "texto": "Olá alunos, alguma dúvida sobre a matéria de hoje?"}
+]
+
+# Dimensões Padrão da Janela (AJUSTADO PARA 400x300)
 JANELA_WIDTH = 400
-JANELA_HEIGHT = 300
+JANELA_HEIGHT = 300 
 
 # Tupla de cores para garantir que o texto seja visível em ambos os modos
 # (Cor Modo Claro, Cor Modo Escuro)
-TEMA_TEXT_COLOR = ("black", "white") 
+TEMA_TEXT_COLOR = ("black", "white")
+# A cor do texto do botão EXIT usará TEMA_TEXT_COLOR para ser Preto no Light e Branco no Dark
+# A constante TEMA_TEXT_COLOR_REVERSE não é mais necessária
 
 # =========================================================
 # REGIÃO: FUNÇÕES DE UTILIDADE (LAYOUT E LÓGICA CENTRAL)
@@ -54,24 +62,56 @@ def Verificar_Perfil(email):
     return "Desconhecido"
 
 def limpar_tela():
-    """Remove todos os widgets visíveis na tela, exceto o botão de tema (persistente)."""
+    """Remove todos os widgets visíveis na tela, exceto os botões persistentes (tema/sair)."""
     for widget in app.winfo_children():
-        # Verifica se o widget não é o botão de tema antes de removê-lo
-        if widget is not btn_mode_toggle:
+        # Verifica se o widget não é um dos botões fixos antes de removê-lo
+        if widget is not btn_mode_toggle and widget is not btn_exit:
             widget.pack_forget()
         
 def toggle_appearance_mode():
-    """Alterna o modo de aparência entre Dark e Light, atualizando o ícone do botão."""
+    """
+    Alterna o modo de aparência, atualizando o ícone (🌙/☀️) 
+    e a cor da borda dos botões de controle.
+    """
     current_mode = ctk.get_appearance_mode()
     
     if current_mode == "Dark":
         ctk.set_appearance_mode("Light")
-        # Configuração visual para tema Claro
-        btn_mode_toggle.configure(text="☀️", text_color="#202020", fg_color="#F9F9FA", hover_color="#EEEEEE") 
+        
+        # --- Configurações para MODO CLARO (Light) ---
+        new_border_color = "black" # Borda preta
+        
+        btn_mode_toggle.configure(
+            text="☀️", # Ícone (Sol)
+            text_color="#202020", 
+            fg_color="#F9F9FA", 
+            hover_color="#DDDDDD",
+            border_color=new_border_color
+        )
     else:
         ctk.set_appearance_mode("Dark")
-        # Configuração visual para tema Escuro
-        btn_mode_toggle.configure(text="🌙", text_color="white", fg_color="#303030", hover_color="#404040")
+        
+        # --- Configurações para MODO ESCURO (Dark) ---
+        new_border_color = "white" # Borda branca
+
+        btn_mode_toggle.configure(
+            text="🌙", # Ícone (Lua)
+            text_color="white", 
+            fg_color="#303030", 
+            hover_color="#505050",
+            border_color=new_border_color
+        )
+        
+    # Atualiza a cor da borda e do texto do botão de fechar para manter o contraste
+    # O TEMA_TEXT_COLOR ("black", "white") garante o texto preto no Light e branco no Dark.
+    btn_exit.configure(
+        border_color=new_border_color,
+        text_color=TEMA_TEXT_COLOR 
+    )
+
+def fechar_aplicacao():
+    """Função para fechar o aplicativo de forma limpa."""
+    app.destroy()
 
 def voltar_ao_menu_principal():
     """Redireciona o usuário para o menu específico do seu perfil logado."""
@@ -83,6 +123,20 @@ def voltar_ao_menu_principal():
         tela_professor()
     elif perfil_logado == "Aluno":
         tela_aluno()
+        
+def encerrar_chat_e_voltar():
+    """Limpa o histórico de chat globalmente e retorna ao menu principal do perfil."""
+    global MENSAGENS_CHAT
+    
+    # 1. Limpa o histórico de mensagens
+    # Reinicia o chat com a mensagem inicial, apagando o histórico
+    MENSAGENS_CHAT = [
+        {"perfil": "Sistema", "texto": "Início da Conversa. Histórico apagado."}
+    ]
+    
+    # 2. Retorna ao menu do perfil logado
+    voltar_ao_menu_principal()
+
 
 # =========================================================
 # REGIÃO: GERENCIAMENTO DE TELAS - MÓDULO COORDENADOR (CADASTROS)
@@ -242,9 +296,56 @@ def tela_chat_alunos_prof():
     """Desenha a tela de chat para o Professor interagir com os Alunos."""
     limpar_tela()
     app.title("Professor - Chat com Alunos")
-    ctk.CTkLabel(app, text="Chat com Alunos", font=fonte_titulo).pack(pady=30)
-    ctk.CTkLabel(app, text="Aqui seria a interface de chat para comunicação com os alunos.", font=fonte_campos).pack(pady=10)
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=250, command=voltar_ao_menu_principal).pack(pady=30)
+    ctk.CTkLabel(app, text="Chat Global", font=fonte_titulo).pack(pady=10)
+
+    # Textbox para histórico de mensagens (readonly)
+    chat_history_box = ctk.CTkTextbox(app, width=500, height=450, font=fonte_campos, state="disabled")
+    chat_history_box.pack(pady=10, padx=20)
+    
+    def atualizar_historico():
+        """Atualiza a CTkTextbox com todas as mensagens globais."""
+        chat_history_box.configure(state="normal")
+        chat_history_box.delete("1.0", "end")
+        
+        for msg in MENSAGENS_CHAT:
+            # Formato: [Perfil] Mensagem
+            chat_history_box.insert("end", f"[{msg['perfil']}]: {msg['texto']}\n")
+            
+        chat_history_box.configure(state="disabled")
+        # Scroll para o final
+        chat_history_box.yview_moveto(1.0)
+
+    def enviar_mensagem(event=None):
+        """Lê a mensagem, adiciona à lista global e atualiza a tela."""
+        mensagem = chat_input_entry.get()
+        if mensagem.strip():
+            # Usa o perfil_logado para identificar o remetente
+            MENSAGENS_CHAT.append({"perfil": perfil_logado, "texto": mensagem})
+            chat_input_entry.delete(0, 'end')
+            atualizar_historico()
+            
+    # Frame para agrupar o campo de input e os botões
+    input_frame = ctk.CTkFrame(app, fg_color="transparent")
+    input_frame.pack(pady=10, padx=20, fill="x")
+
+    chat_input_entry = ctk.CTkEntry(input_frame, placeholder_text="Digite sua mensagem...", font=fonte_campos)
+    chat_input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+    chat_input_entry.focus_set() # Define o foco no campo de chat
+    
+    # Botão Enviar
+    ctk.CTkButton(input_frame, text="Enviar", font=fonte_botoes, width=80, command=enviar_mensagem).pack(side="left", padx=(0, 10))
+    
+    # Botão Voltar ao Menu (Mantém a conversa)
+    ctk.CTkButton(input_frame, text="Voltar ao Menu", font=fonte_botoes, width=150, command=voltar_ao_menu_principal, fg_color="#4CAF50", hover_color="#388E3C").pack(side="left", padx=(0, 10))
+
+    # NOVO BOTÃO: Encerrar Chat (Limpa a conversa e volta)
+    ctk.CTkButton(input_frame, text="Encerrar Chat", font=fonte_botoes, width=150, command=encerrar_chat_e_voltar, fg_color="#C0392B", hover_color="#A93226").pack(side="left")
+
+    # BIND: Usar Enter para enviar mensagem
+    chat_input_entry.bind("<Return>", enviar_mensagem)
+    
+    # Inicializa o histórico
+    atualizar_historico()
 
 
 # =========================================================
@@ -295,9 +396,56 @@ def tela_chat_professores_aluno():
     """Desenha a tela de chat para o Aluno interagir com os Professores."""
     limpar_tela()
     app.title("Aluno - Chat com Professores")
-    ctk.CTkLabel(app, text="Chat com Professores", font=fonte_titulo).pack(pady=30)
-    ctk.CTkLabel(app, text="Aqui seria a interface de chat para comunicação com os professores.", font=fonte_campos).pack(pady=10)
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=250, command=voltar_ao_menu_principal).pack(pady=30)
+    ctk.CTkLabel(app, text="Chat Global", font=fonte_titulo).pack(pady=10)
+
+    # Textbox para histórico de mensagens (readonly)
+    chat_history_box = ctk.CTkTextbox(app, width=500, height=450, font=fonte_campos, state="disabled")
+    chat_history_box.pack(pady=10, padx=20)
+    
+    def atualizar_historico():
+        """Atualiza a CTkTextbox com todas as mensagens globais."""
+        chat_history_box.configure(state="normal")
+        chat_history_box.delete("1.0", "end")
+        
+        for msg in MENSAGENS_CHAT:
+            # Formato: [Perfil] Mensagem
+            chat_history_box.insert("end", f"[{msg['perfil']}]: {msg['texto']}\n")
+            
+        chat_history_box.configure(state="disabled")
+        # Scroll para o final
+        chat_history_box.yview_moveto(1.0)
+
+    def enviar_mensagem(event=None):
+        """Lê a mensagem, adiciona à lista global e atualiza a tela."""
+        mensagem = chat_input_entry.get()
+        if mensagem.strip():
+            # Usa o perfil_logado para identificar o remetente
+            MENSAGENS_CHAT.append({"perfil": perfil_logado, "texto": mensagem})
+            chat_input_entry.delete(0, 'end')
+            atualizar_historico()
+            
+    # Frame para agrupar o campo de input e o botão "Enviar"
+    input_frame = ctk.CTkFrame(app, fg_color="transparent")
+    input_frame.pack(pady=10, padx=20, fill="x")
+
+    chat_input_entry = ctk.CTkEntry(input_frame, placeholder_text="Digite sua mensagem...", font=fonte_campos)
+    chat_input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+    chat_input_entry.focus_set() # Define o foco no campo de chat
+
+    # Botão Enviar
+    ctk.CTkButton(input_frame, text="Enviar", font=fonte_botoes, width=80, command=enviar_mensagem).pack(side="left", padx=(0, 10))
+    
+    # Botão Voltar ao Menu (Mantém a conversa)
+    ctk.CTkButton(input_frame, text="Voltar ao Menu", font=fonte_botoes, width=150, command=voltar_ao_menu_principal, fg_color="#4CAF50", hover_color="#388E3C").pack(side="left", padx=(0, 10))
+    
+    # NOVO BOTÃO: Encerrar Chat (Limpa a conversa e volta)
+    ctk.CTkButton(input_frame, text="Encerrar Chat", font=fonte_botoes, width=150, command=encerrar_chat_e_voltar, fg_color="#C0392B", hover_color="#A93226").pack(side="left")
+
+    # BIND: Usar Enter para enviar mensagem
+    chat_input_entry.bind("<Return>", enviar_mensagem)
+    
+    # Inicializa o histórico
+    atualizar_historico()
 
 
 # =========================================================
@@ -589,22 +737,50 @@ button_login = ctk.CTkButton(
     command=Tentar_Login
 )
 
-# Botão de Tema (Dark/Light) - Persistente
+# CONSTANTES VISUAIS PARA BOTÕES PERSISTENTES
 BTN_SIZE = 40
+BTN_BORDER_WIDTH = 2
+# Cor da Borda: Branco no Dark, Preto no Light
+BTN_BORDER_COLOR_DARK = "white"
+BTN_BORDER_COLOR_LIGHT = "black"
+
+
+# Botão de Tema (Dark/Light) - Persistente
+# MUDANÇA: Font size for stable emoji
 btn_mode_toggle = ctk.CTkButton(
     app,
-    text="🌙", # Ícone inicial para modo Dark (default)
+    text="🌙", # Ícone inicial (Dark) centralizado
+    width=BTN_SIZE,
+    height=BTN_SIZE,
+    corner_radius=BTN_SIZE, 
+    font=("Arial", 22, "bold"), # Tamanho maior para estabilizar o emoji
+    fg_color="#303030", 
+    hover_color="#505050", # Mais nítido para clique/hover
+    text_color="white",
+    border_width=BTN_BORDER_WIDTH, 
+    border_color=BTN_BORDER_COLOR_DARK, # Cor inicial: Branco (Modo Dark)
+    command=toggle_appearance_mode
+)
+# Posição fixa no canto inferior direito
+btn_mode_toggle.place(relx=1.0, rely=1.0, x=-15, y=-15, anchor="se") 
+
+# Botão de Sair/Fechar o Aplicativo - Persistente 
+btn_exit = ctk.CTkButton(
+    app,
+    text="X", 
     width=BTN_SIZE,
     height=BTN_SIZE,
     corner_radius=BTN_SIZE, 
     font=("Arial", 18, "bold"),
-    fg_color="#303030", 
-    hover_color="#404040",
-    text_color="white",
-    command=toggle_appearance_mode
+    fg_color="red", 
+    hover_color="#B00000",
+    text_color=TEMA_TEXT_COLOR, # Cor de texto dinâmica: Black (Light), White (Dark)
+    border_width=BTN_BORDER_WIDTH, 
+    border_color=BTN_BORDER_COLOR_DARK, # Cor inicial: Branco (Modo Dark)
+    command=fechar_aplicacao
 )
-# Posicionamento fixo no canto inferior direito usando coordenadas relativas
-btn_mode_toggle.place(relx=1.0, rely=1.0, x=-15, y=-15, anchor="se") 
+# Posiciona no canto inferior esquerdo (FIXO)
+btn_exit.place(relx=0.0, rely=1.0, x=15, y=-15, anchor="sw") 
 
 
 # =========================================================
