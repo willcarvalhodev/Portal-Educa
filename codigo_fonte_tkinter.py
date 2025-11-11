@@ -35,17 +35,17 @@ professor_email_entry = None
 professor_senha_entry = None
 professor_status_label = None 
 
-professor_email_excluir_entry = None
 professor_exclusao_status_label = None
+professor_selecionado = None
 
-aluno_email_excluir_entry = None
 aluno_exclusao_status_label = None
+aluno_selecionado = None
 
-curso_nome_excluir_entry = None
 curso_exclusao_status_label = None
+curso_selecionado = None
 
-turma_nome_excluir_entry = None
 turma_exclusao_status_label = None
+turma_selecionada = None
 
 # Widgets da tela de login
 label_bem_vindo = None
@@ -64,9 +64,46 @@ except Exception as e:
     print(f"Erro ao carregar histórico do chat: {e}")
     MENSAGENS_CHAT = [{"perfil": "Sistema", "texto": "Início da Conversa"}]
 
+# DADOS SIMULADOS PARA EXCLUSÃO
+DADOS_PROFESSORES = [
+    {"id": 1, "nome": "Prof. Ana Silva", "email": "teste@professor.educa"},
+    {"id": 2, "nome": "Prof. Carlos Mendes", "email": "carlos@professor.educa"},
+    {"id": 3, "nome": "Prof. Mariana Costa", "email": "mariana@professor.educa"},
+    {"id": 4, "nome": "Prof. João Santos", "email": "joao@professor.educa"},
+    {"id": 5, "nome": "Prof. Patricia Lima", "email": "patricia@professor.educa"},
+]
+
+DADOS_ALUNOS = [
+    {"matricula": "A20240001", "nome": "Aluno Bruno", "email": "teste@aluno.educa", "turma": "2024-A"},
+    {"matricula": "A20240002", "nome": "Aluna Luiza", "email": "luiza@aluno.educa", "turma": "2024-A"},
+    {"matricula": "A20240003", "nome": "Aluno Pedro", "email": "pedro@aluno.educa", "turma": "2024-B"},
+    {"matricula": "A20240004", "nome": "Aluna Maria", "email": "maria@aluno.educa", "turma": "2024-A"},
+    {"matricula": "A20240005", "nome": "Aluno Lucas", "email": "lucas@aluno.educa", "turma": "2024-B"},
+]
+
+DADOS_CURSOS = [
+    {"id": 1, "nome": "Engenharia de Software"},
+    {"id": 2, "nome": "Administração"},
+    {"id": 3, "nome": "Ciências Contábeis"},
+    {"id": 4, "nome": "Sistemas de Informação"},
+    {"id": 5, "nome": "Direito"},
+]
+
+DADOS_TURMAS = [
+    {"id": 1, "nome": "2024-A", "curso": "Engenharia de Software", "alunos": 30},
+    {"id": 2, "nome": "2024-B", "curso": "Administração", "alunos": 25},
+    {"id": 3, "nome": "2024-C", "curso": "Ciências Contábeis", "alunos": 20},
+    {"id": 4, "nome": "2024-D", "curso": "Sistemas de Informação", "alunos": 28},
+    {"id": 5, "nome": "2024-E", "curso": "Direito", "alunos": 35},
+]
+
 # Dimensões Padrão da Janela
 JANELA_WIDTH = 400
 JANELA_HEIGHT = 300 
+
+# Dimensões para telas de listar e excluir
+JANELA_LISTAR_EXCLUIR_WIDTH = 900
+JANELA_LISTAR_EXCLUIR_HEIGHT = 650
 
 # Tupla de cores para visibilidade
 TEMA_TEXT_COLOR = ("black", "white")
@@ -90,6 +127,21 @@ def center_window(app, width, height):
     y = int((altura_tela / 2) - (height / 2))
     app.geometry(f"{width}x{height}+{x}+{y}")
 
+def obter_cores_xadrez():
+    """Retorna as cores para efeito xadrez baseado no modo atual (dark/light)."""
+    current_mode = ctk.get_appearance_mode()
+    
+    if current_mode == "Dark":
+        # Cores para modo escuro
+        cor_par = "#2B2B2B"
+        cor_impar = "#3B3B3B"
+    else:
+        # Cores para modo claro
+        cor_par = "#F0F0F0"
+        cor_impar = "#FFFFFF"
+    
+    return cor_par, cor_impar
+
 def Verificar_Perfil(email):
     """Identifica o perfil do usuário pelo sufixo do e-mail (usando lógica local)."""
     email_minusculo = email.lower()
@@ -103,14 +155,52 @@ def Verificar_Perfil(email):
 
 def limpar_tela():
     """Remove todos os widgets visíveis na tela, exceto os botões persistentes."""
+    global funcao_atualizar_lista_atual
+    # Reseta a função de atualização quando limpa a tela
+    funcao_atualizar_lista_atual = None
     for widget in app.winfo_children():
         if widget not in [btn_mode_toggle, btn_exit, version_label]:
             widget.destroy()
+
+# Variável global para armazenar função de atualização atual
+funcao_atualizar_lista_atual = None
+
+def atualizar_lista_se_modo_mudou():
+    """Recria a lista atual se estivermos em uma tela com lista, após mudança de modo."""
+    global funcao_atualizar_lista_atual
+    
+    titulo_atual = app.title()
+    
+    # Para telas de listagem simples, recria a tela
+    telas_listagem = {
+        "Coordenador - Listar Professores": tela_listar_professores,
+        "Coordenador - Listar Alunos": tela_listar_alunos,
+        "Coordenador - Listar Cursos": tela_listar_cursos,
+        "Coordenador - Listar Turmas": tela_listar_turmas,
+        "Aluno - Diário Eletrônico": tela_acessar_diario,
+        "Aluno - Verificar Aulas": tela_verificar_aulas,
+        "Aluno - Verificar Atividades": tela_verificar_atividades_aluno,
+        "Aluno - Verificar Desempenho": tela_verificar_desempenho,
+        "Aluno - Verificar Frequência": tela_verificar_frequencia_aluno,
+    }
+    
+    # Para telas de exclusão, usa a função de atualização preservada
+    if titulo_atual in telas_listagem:
+        # Recria a tela imediatamente
+        telas_listagem[titulo_atual]()
+    elif funcao_atualizar_lista_atual:
+        # Chama a função de atualização que preserva estado (pesquisa e seleção)
+        try:
+            funcao_atualizar_lista_atual()
+        except:
+            # Se houver erro (tela foi fechada), não faz nada
+            pass
 
 def toggle_appearance_mode():
     """
     Alterna o modo de aparência, atualizando o ícone (🌙/☀️) 
     e a cor da borda dos botões de controle.
+    Atualiza automaticamente as cores das listas se estiver em uma tela com lista.
     """
     current_mode = ctk.get_appearance_mode()
     
@@ -134,6 +224,9 @@ def toggle_appearance_mode():
         border_color=new_border_color,
         text_color=TEMA_TEXT_COLOR 
     )
+    
+    # Atualiza as listas se estivermos em uma tela com lista
+    atualizar_lista_se_modo_mudou()
 
 def fechar_aplicacao():
     """Função para fechar o aplicativo de forma limpa."""
@@ -154,7 +247,7 @@ def tela_coordenador():
     app.title("Portal Educa - Coordenador")
 
     ctk.CTkLabel(app, text="Bem-vindo, Coordenador!", font=fonte_titulo).pack(pady=30)
-    ctk.CTkLabel(app, text="Escolha uma entidade para gerenciar:", font=fonte_subtitulo).pack(pady=5)
+    ctk.CTkLabel(app, text="Escolha um tema para continuar:", font=fonte_subtitulo).pack(pady=5)
 
     # Botões de navegação para as telas de Gestão Modular
     ctk.CTkButton(app, text="Professor", font=fonte_botoes, width=300, command=tela_gestao_professor).pack(pady=10) 
@@ -174,153 +267,604 @@ def tela_professor():
     app.title("Portal Educa - Professor")
 
     ctk.CTkLabel(app, text="Bem-vindo, Professor!", font=fonte_titulo).pack(pady=30)
-    ctk.CTkLabel(app, text="Escolha uma opção do menu para continuar.", font=fonte_campos).pack(pady=5)
+    ctk.CTkLabel(app, text="Escolha um tema para continuar:", font=fonte_subtitulo).pack(pady=5)
 
-    # Botões de navegação para funcionalidades
-    ctk.CTkButton(app, text="Visualizar Turmas", font=fonte_botoes, width=250, command=tela_visualizar_turmas).pack(pady=5)
-    ctk.CTkButton(app, text="Postar Atividades", font=fonte_botoes, width=250, command=tela_postar_atividades).pack(pady=5)
-    ctk.CTkButton(app, text="Visualizar Atividades", font=fonte_botoes, width=250, command=tela_visualizar_atividades_prof).pack(pady=5)
-    ctk.CTkButton(app, text="Lançar Notas", font=fonte_botoes, width=250, command=tela_lancar_notas).pack(pady=5)
-    ctk.CTkButton(app, text="Visualizar Notas", font=fonte_botoes, width=250, command=tela_visualizar_notas_prof).pack(pady=5)
-    ctk.CTkButton(app, text="Lançar Frequência", font=fonte_botoes, width=250, command=tela_lancar_frequencia).pack(pady=5)
-    ctk.CTkButton(app, text="Visualizar Frequência", font=fonte_botoes, width=250, command=tela_visualizar_frequencia_prof).pack(pady=5)
+    # Botões de temas principais
+    ctk.CTkButton(app, text="Turmas", font=fonte_botoes, width=300, command=tela_gestao_turmas_prof).pack(pady=10)
+    ctk.CTkButton(app, text="Atividades", font=fonte_botoes, width=300, command=tela_gestao_atividades_prof).pack(pady=10)
+    ctk.CTkButton(app, text="Notas", font=fonte_botoes, width=300, command=tela_gestao_notas_prof).pack(pady=10)
+    ctk.CTkButton(app, text="Frequência", font=fonte_botoes, width=300, command=tela_gestao_frequencia_prof).pack(pady=10)
+    ctk.CTkButton(app, text="Comunicação", font=fonte_botoes, width=300, command=tela_gestao_comunicacao_prof).pack(pady=10)
     
-    # CHAT COM ALUNOS
-    ctk.CTkButton(app, text="Chat com Alunos", font=fonte_botoes, width=250, command=tela_chat_alunos_prof).pack(pady=5) 
-
     # Botão de Sair/Logout
-    ctk.CTkButton(app, text="Sair (Logout)", font=fonte_botoes, width=250, command=reiniciar_login).pack(pady=15)
+    ctk.CTkButton(app, text="Sair (Logout)", font=fonte_botoes, width=300, command=reiniciar_login).pack(pady=30)
 
 # =========================================================
 # REGIÃO: FUNÇÕES DO PERFIL ALUNO
 # =========================================================
 
+# --- Telas de Gestão (Subtemas) para Aluno ---
+
+def tela_gestao_informacoes_aluno():
+    """Menu de gestão de Informações para Aluno."""
+    limpar_tela()
+    app.title("Aluno - Informações")
+    app.state('zoomed')
+
+    ctk.CTkLabel(app, text="INFORMAÇÕES", font=fonte_titulo).pack(pady=30)
+
+    ctk.CTkButton(app, text="Acessar Diário Eletrônico", font=fonte_botoes, width=300, command=tela_acessar_diario).pack(pady=10)
+    
+    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=300, command=tela_aluno).pack(pady=30)
+
+def tela_gestao_aulas_aluno():
+    """Menu de gestão de Aulas para Aluno."""
+    limpar_tela()
+    app.title("Aluno - Aulas")
+    app.state('zoomed')
+
+    ctk.CTkLabel(app, text="AULAS", font=fonte_titulo).pack(pady=30)
+
+    ctk.CTkButton(app, text="Verificar Aulas", font=fonte_botoes, width=300, command=tela_verificar_aulas).pack(pady=10)
+    
+    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=300, command=tela_aluno).pack(pady=30)
+
+def tela_gestao_atividades_aluno():
+    """Menu de gestão de Atividades para Aluno."""
+    limpar_tela()
+    app.title("Aluno - Atividades")
+    app.state('zoomed')
+
+    ctk.CTkLabel(app, text="ATIVIDADES", font=fonte_titulo).pack(pady=30)
+
+    ctk.CTkButton(app, text="Verificar Atividades", font=fonte_botoes, width=300, command=tela_verificar_atividades_aluno).pack(pady=10)
+    
+    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=300, command=tela_aluno).pack(pady=30)
+
+def tela_gestao_avaliacoes_aluno():
+    """Menu de gestão de Avaliações para Aluno."""
+    limpar_tela()
+    app.title("Aluno - Avaliações")
+    app.state('zoomed')
+
+    ctk.CTkLabel(app, text="AVALIAÇÕES", font=fonte_titulo).pack(pady=30)
+
+    ctk.CTkButton(app, text="Verificar Desempenho", font=fonte_botoes, width=300, command=tela_verificar_desempenho).pack(pady=10)
+    ctk.CTkButton(app, text="Verificar Frequência", font=fonte_botoes, width=300, command=tela_verificar_frequencia_aluno).pack(pady=10)
+    
+    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=300, command=tela_aluno).pack(pady=30)
+
+def tela_gestao_comunicacao_aluno():
+    """Menu de gestão de Comunicação para Aluno."""
+    limpar_tela()
+    app.title("Aluno - Comunicação")
+    app.state('zoomed')
+
+    ctk.CTkLabel(app, text="COMUNICAÇÃO", font=fonte_titulo).pack(pady=30)
+
+    ctk.CTkButton(app, text="Chat com Professores", font=fonte_botoes, width=300, command=tela_chat_professores_aluno).pack(pady=10)
+    
+    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=300, command=tela_aluno).pack(pady=30)
+
+# --- Telas Específicas do Aluno ---
+
 def tela_acessar_diario():
     """Desenha a tela de acesso ao diário eletrônico do aluno."""
     limpar_tela()
     app.title("Aluno - Diário Eletrônico")
+    app.update_idletasks()
+    app.state('zoomed')
     
     ctk.CTkLabel(app, text="Diário Eletrônico", font=fonte_titulo).pack(pady=30)
     
-    # Frame para mostrar as informações do diário
-    diario_frame = ctk.CTkFrame(app)
-    diario_frame.pack(pady=20, padx=20, fill="both", expand=True)
+    # Container principal centralizado
+    container_frame = ctk.CTkFrame(app, fg_color="transparent")
+    container_frame.pack(pady=20, padx=50, fill="both", expand=True)
     
-    dados_diario = [
-        "Matrícula: A20240001",
-        "Nome: Aluno Teste",
-        "Curso: Engenharia de Software",
-        "Turma: 2024-A",
-        "Status: Matriculado"
+    # Frame para informações pessoais (simples e limpo)
+    info_frame = ctk.CTkFrame(container_frame)
+    info_frame.pack(pady=15, padx=20, fill="x")
+    
+    ctk.CTkLabel(
+        info_frame, 
+        text="Informações do Aluno", 
+        font=("Arial", 18, "bold")
+    ).pack(pady=(15, 20))
+    
+    # Informações organizadas de forma limpa
+    informacoes = [
+        ("Matrícula", "A20240001"),
+        ("Nome", "Aluno Teste"),
+        ("Curso", "Engenharia de Software"),
+        ("Turma", "2024-A"),
+        ("Status", "Matriculado")
     ]
     
-    for dado in dados_diario:
-        ctk.CTkLabel(diario_frame, text=dado, font=fonte_campos).pack(pady=5)
+    for label, valor in informacoes:
+        linha_frame = ctk.CTkFrame(info_frame, fg_color="transparent")
+        linha_frame.pack(fill="x", padx=30, pady=8)
+        
+        ctk.CTkLabel(
+            linha_frame, 
+            text=f"{label}:", 
+            font=("Arial", 14, "bold"),
+            width=150,
+            anchor="w"
+        ).pack(side="left")
+        
+        ctk.CTkLabel(
+            linha_frame, 
+            text=valor, 
+            font=fonte_campos,
+            anchor="w"
+        ).pack(side="left", padx=(10, 0))
     
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", 
-                 font=fonte_botoes, width=250, 
-                 command=voltar_ao_menu_principal).pack(pady=30)
+    # Frame para notas e frequência (em uma linha horizontal)
+    dados_frame = ctk.CTkFrame(container_frame, fg_color="transparent")
+    dados_frame.pack(pady=15, padx=20, fill="both", expand=True)
+    
+    # Frame de notas
+    notas_frame = ctk.CTkFrame(dados_frame)
+    notas_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
+    
+    ctk.CTkLabel(
+        notas_frame, 
+        text="Notas", 
+        font=("Arial", 18, "bold")
+    ).pack(pady=(15, 20))
+    
+    notas = [
+        ("Programação I", "8.5"),
+        ("Banco de Dados", "7.8"),
+        ("Engenharia de Software", "9.2"),
+        ("Algoritmos", "8.0"),
+        ("Projeto Integrador", "9.5")
+    ]
+    
+    for materia, nota in notas:
+        linha_frame = ctk.CTkFrame(notas_frame, fg_color="transparent")
+        linha_frame.pack(fill="x", padx=20, pady=6)
+        
+        ctk.CTkLabel(
+            linha_frame, 
+            text=materia, 
+            font=fonte_campos,
+            anchor="w"
+        ).pack(side="left", fill="x", expand=True)
+        
+        ctk.CTkLabel(
+            linha_frame, 
+            text=nota, 
+            font=("Arial", 14, "bold"),
+            width=50,
+            anchor="e"
+        ).pack(side="right")
+    
+    # Frame de frequência
+    frequencia_frame = ctk.CTkFrame(dados_frame)
+    frequencia_frame.pack(side="right", fill="both", expand=True, padx=(10, 0))
+    
+    ctk.CTkLabel(
+        frequencia_frame, 
+        text="Frequência", 
+        font=("Arial", 18, "bold")
+    ).pack(pady=(15, 20))
+    
+    frequencias = [
+        ("Programação I", "95%"),
+        ("Banco de Dados", "88%"),
+        ("Engenharia de Software", "92%"),
+        ("Algoritmos", "90%"),
+        ("Projeto Integrador", "98%")
+    ]
+    
+    for materia, freq in frequencias:
+        linha_frame = ctk.CTkFrame(frequencia_frame, fg_color="transparent")
+        linha_frame.pack(fill="x", padx=20, pady=6)
+        
+        ctk.CTkLabel(
+            linha_frame, 
+            text=materia, 
+            font=fonte_campos,
+            anchor="w"
+        ).pack(side="left", fill="x", expand=True)
+        
+        ctk.CTkLabel(
+            linha_frame, 
+            text=freq, 
+            font=("Arial", 14, "bold"),
+            width=50,
+            anchor="e"
+        ).pack(side="right")
+    
+    ctk.CTkButton(app, text="<< Voltar às Informações", 
+                 font=fonte_botoes, width=300, 
+                 command=tela_gestao_informacoes_aluno).pack(pady=30)
 
 def tela_verificar_aulas():
     """Desenha a tela para verificar as aulas do aluno."""
     limpar_tela()
     app.title("Aluno - Verificar Aulas")
+    app.update_idletasks()
+    app.state('zoomed')
     
-    ctk.CTkLabel(app, text="Minhas Aulas", font=fonte_titulo).pack(pady=30)
+    ctk.CTkLabel(app, text="Minhas Aulas", font=fonte_titulo).pack(pady=20)
     
-    aulas_frame = ctk.CTkFrame(app)
+    # Frame scrollable para as aulas
+    aulas_frame = ctk.CTkScrollableFrame(app, width=800, height=400)
     aulas_frame.pack(pady=20, padx=20, fill="both", expand=True)
     
+    # Obtém as cores para efeito xadrez
+    cor_par, cor_impar = obter_cores_xadrez()
+    
+    # Dados das aulas com mais informações
     aulas = [
-        "Segunda-feira: Programação I (08:00 - 10:00)",
-        "Terça-feira: Banco de Dados (10:00 - 12:00)",
-        "Quarta-feira: Engenharia de Software (14:00 - 16:00)",
-        "Quinta-feira: Algoritmos (16:00 - 18:00)",
-        "Sexta-feira: Projeto Integrador (19:00 - 21:00)"
+        {
+            "dia": "Segunda-feira",
+            "materia": "Programação I",
+            "horario": "08:00 - 10:00",
+            "professor": "Prof. Ana Silva",
+            "sala": "Sala 101"
+        },
+        {
+            "dia": "Terça-feira",
+            "materia": "Banco de Dados",
+            "horario": "10:00 - 12:00",
+            "professor": "Prof. Carlos Mendes",
+            "sala": "Sala 102"
+        },
+        {
+            "dia": "Quarta-feira",
+            "materia": "Engenharia de Software",
+            "horario": "14:00 - 16:00",
+            "professor": "Prof. Mariana Costa",
+            "sala": "Sala 103"
+        },
+        {
+            "dia": "Quinta-feira",
+            "materia": "Algoritmos",
+            "horario": "16:00 - 18:00",
+            "professor": "Prof. João Santos",
+            "sala": "Sala 104"
+        },
+        {
+            "dia": "Sexta-feira",
+            "materia": "Projeto Integrador",
+            "horario": "19:00 - 21:00",
+            "professor": "Prof. Patricia Lima",
+            "sala": "Sala 105"
+        }
     ]
     
-    for aula in aulas:
-        ctk.CTkLabel(aulas_frame, text=aula, font=fonte_campos).pack(pady=5)
+    # Cria os itens das aulas com efeito xadrez
+    for idx, aula in enumerate(aulas):
+        item_frame = ctk.CTkFrame(aulas_frame, border_width=0, corner_radius=8)
+        if idx % 2 == 0:
+            item_frame.configure(fg_color=cor_par)
+        else:
+            item_frame.configure(fg_color=cor_impar)
+        item_frame.pack(fill="x", pady=2, padx=5)
+        
+        # Formata o texto da aula
+        texto_aula = f"{aula['dia']} | {aula['materia']} | {aula['horario']}"
+        texto_detalhes = f"Professor: {aula['professor']} | Sala: {aula['sala']}"
+        
+        # Label principal
+        aula_label = ctk.CTkLabel(
+            item_frame, 
+            text=texto_aula, 
+            font=("Arial", 14, "bold"),
+            anchor="w"
+        )
+        aula_label.pack(pady=(8, 2), padx=15, fill="x")
+        
+        # Label de detalhes
+        detalhes_label = ctk.CTkLabel(
+            item_frame, 
+            text=texto_detalhes, 
+            font=fonte_campos,
+            anchor="w",
+            text_color=("gray60", "gray40")
+        )
+        detalhes_label.pack(pady=(0, 8), padx=15, fill="x")
     
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", 
-                 font=fonte_botoes, width=250, 
-                 command=voltar_ao_menu_principal).pack(pady=30)
+    ctk.CTkButton(app, text="<< Voltar às Aulas", 
+                 font=fonte_botoes, width=300, 
+                 command=tela_gestao_aulas_aluno).pack(pady=20)
 
 def tela_verificar_atividades_aluno():
     """Desenha a tela para verificar as atividades do aluno."""
     limpar_tela()
     app.title("Aluno - Verificar Atividades")
+    app.update_idletasks()
+    app.state('zoomed')
     
-    ctk.CTkLabel(app, text="Minhas Atividades", font=fonte_titulo).pack(pady=30)
+    ctk.CTkLabel(app, text="Minhas Atividades", font=fonte_titulo).pack(pady=20)
     
-    atividades_frame = ctk.CTkFrame(app)
+    # Frame scrollable para as atividades
+    atividades_frame = ctk.CTkScrollableFrame(app, width=800, height=400)
     atividades_frame.pack(pady=20, padx=20, fill="both", expand=True)
     
+    # Obtém as cores para efeito xadrez
+    cor_par, cor_impar = obter_cores_xadrez()
+    
+    # Dados das atividades com mais informações
     atividades = [
-        "Trabalho de Programação I - Entrega: 20/11/2023",
-        "Prova de Banco de Dados - Data: 25/11/2023",
-        "Projeto de Engenharia de Software - Entrega: 30/11/2023",
-        "Lista de Exercícios Algoritmos - Entrega: 05/12/2023"
+        {
+            "titulo": "Trabalho de Programação I",
+            "tipo": "Trabalho",
+            "data_entrega": "20/11/2023",
+            "status": "Pendente",
+            "materia": "Programação I"
+        },
+        {
+            "titulo": "Prova de Banco de Dados",
+            "tipo": "Prova",
+            "data_entrega": "25/11/2023",
+            "status": "Pendente",
+            "materia": "Banco de Dados"
+        },
+        {
+            "titulo": "Projeto de Engenharia de Software",
+            "tipo": "Projeto",
+            "data_entrega": "30/11/2023",
+            "status": "Pendente",
+            "materia": "Engenharia de Software"
+        },
+        {
+            "titulo": "Lista de Exercícios Algoritmos",
+            "tipo": "Lista de Exercícios",
+            "data_entrega": "05/12/2023",
+            "status": "Pendente",
+            "materia": "Algoritmos"
+        },
+        {
+            "titulo": "Apresentação Projeto Integrador",
+            "tipo": "Apresentação",
+            "data_entrega": "15/12/2023",
+            "status": "Pendente",
+            "materia": "Projeto Integrador"
+        }
     ]
     
-    for atividade in atividades:
-        ctk.CTkLabel(atividades_frame, text=atividade, font=fonte_campos).pack(pady=5)
+    # Cria os itens das atividades com efeito xadrez
+    for idx, atividade in enumerate(atividades):
+        item_frame = ctk.CTkFrame(atividades_frame, border_width=0, corner_radius=8)
+        if idx % 2 == 0:
+            item_frame.configure(fg_color=cor_par)
+        else:
+            item_frame.configure(fg_color=cor_impar)
+        item_frame.pack(fill="x", pady=2, padx=5)
+        
+        # Formata o texto da atividade
+        texto_principal = f"{atividade['titulo']} | {atividade['materia']}"
+        texto_detalhes = f"Tipo: {atividade['tipo']} | Entrega: {atividade['data_entrega']} | Status: {atividade['status']}"
+        
+        # Label principal
+        atividade_label = ctk.CTkLabel(
+            item_frame, 
+            text=texto_principal, 
+            font=("Arial", 14, "bold"),
+            anchor="w"
+        )
+        atividade_label.pack(pady=(8, 2), padx=15, fill="x")
+        
+        # Label de detalhes
+        detalhes_label = ctk.CTkLabel(
+            item_frame, 
+            text=texto_detalhes, 
+            font=fonte_campos,
+            anchor="w",
+            text_color=("gray60", "gray40")
+        )
+        detalhes_label.pack(pady=(0, 8), padx=15, fill="x")
     
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", 
-                 font=fonte_botoes, width=250, 
-                 command=voltar_ao_menu_principal).pack(pady=30)
+    ctk.CTkButton(app, text="<< Voltar às Atividades", 
+                 font=fonte_botoes, width=300, 
+                 command=tela_gestao_atividades_aluno).pack(pady=20)
 
 def tela_verificar_desempenho():
     """Desenha a tela para verificar o desempenho do aluno."""
     limpar_tela()
     app.title("Aluno - Verificar Desempenho")
+    app.update_idletasks()
+    app.state('zoomed')
     
-    ctk.CTkLabel(app, text="Meu Desempenho", font=fonte_titulo).pack(pady=30)
+    ctk.CTkLabel(app, text="Meu Desempenho", font=fonte_titulo).pack(pady=20)
     
-    notas_frame = ctk.CTkFrame(app)
-    notas_frame.pack(pady=20, padx=20, fill="both", expand=True)
+    # Frame scrollable para as notas
+    desempenho_frame = ctk.CTkScrollableFrame(app, width=800, height=400)
+    desempenho_frame.pack(pady=20, padx=20, fill="both", expand=True)
     
-    notas = [
-        "Programação I: 8.5",
-        "Banco de Dados: 9.0",
-        "Engenharia de Software: 8.0",
-        "Algoritmos: 7.5",
-        "Projeto Integrador: 9.5",
-        "Média Geral: 8.5"
+    # Obtém as cores para efeito xadrez
+    cor_par, cor_impar = obter_cores_xadrez()
+    
+    # Dados de desempenho com mais informações
+    desempenhos = [
+        {
+            "materia": "Programação I",
+            "nota": "8.5",
+            "status": "Aprovado",
+            "faltas": "5"
+        },
+        {
+            "materia": "Banco de Dados",
+            "nota": "9.0",
+            "status": "Aprovado",
+            "faltas": "3"
+        },
+        {
+            "materia": "Engenharia de Software",
+            "nota": "8.0",
+            "status": "Aprovado",
+            "faltas": "2"
+        },
+        {
+            "materia": "Algoritmos",
+            "nota": "7.5",
+            "status": "Aprovado",
+            "faltas": "4"
+        },
+        {
+            "materia": "Projeto Integrador",
+            "nota": "9.5",
+            "status": "Aprovado",
+            "faltas": "1"
+        }
     ]
     
-    for nota in notas:
-        ctk.CTkLabel(notas_frame, text=nota, font=fonte_campos).pack(pady=5)
+    # Cria os itens de desempenho com efeito xadrez
+    for idx, desempenho in enumerate(desempenhos):
+        item_frame = ctk.CTkFrame(desempenho_frame, border_width=0, corner_radius=8)
+        if idx % 2 == 0:
+            item_frame.configure(fg_color=cor_par)
+        else:
+            item_frame.configure(fg_color=cor_impar)
+        item_frame.pack(fill="x", pady=2, padx=5)
+        
+        # Formata o texto do desempenho
+        texto_principal = f"{desempenho['materia']} | Nota: {desempenho['nota']}"
+        texto_detalhes = f"Status: {desempenho['status']} | Faltas: {desempenho['faltas']}"
+        
+        # Label principal
+        desempenho_label = ctk.CTkLabel(
+            item_frame, 
+            text=texto_principal, 
+            font=("Arial", 14, "bold"),
+            anchor="w"
+        )
+        desempenho_label.pack(pady=(8, 2), padx=15, fill="x")
+        
+        # Label de detalhes
+        detalhes_label = ctk.CTkLabel(
+            item_frame, 
+            text=texto_detalhes, 
+            font=fonte_campos,
+            anchor="w",
+            text_color=("gray60", "gray40")
+        )
+        detalhes_label.pack(pady=(0, 8), padx=15, fill="x")
     
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", 
-                 font=fonte_botoes, width=250, 
-                 command=voltar_ao_menu_principal).pack(pady=30)
+    # Frame para média geral (destaque)
+    media_frame = ctk.CTkFrame(desempenho_frame, border_width=2, corner_radius=8)
+    media_frame.configure(fg_color=cor_par, border_color="#1f538d")
+    media_frame.pack(fill="x", pady=(10, 2), padx=5)
+    
+    media_label = ctk.CTkLabel(
+        media_frame, 
+        text="Média Geral: 8.5", 
+        font=("Arial", 16, "bold"),
+        anchor="w"
+    )
+    media_label.pack(pady=12, padx=15, fill="x")
+    
+    ctk.CTkButton(app, text="<< Voltar às Avaliações", 
+                 font=fonte_botoes, width=300, 
+                 command=tela_gestao_avaliacoes_aluno).pack(pady=20)
 
 def tela_verificar_frequencia_aluno():
     """Desenha a tela para verificar a frequência do aluno."""
     limpar_tela()
     app.title("Aluno - Verificar Frequência")
+    app.update_idletasks()
+    app.state('zoomed')
     
-    ctk.CTkLabel(app, text="Minha Frequência", font=fonte_titulo).pack(pady=30)
+    ctk.CTkLabel(app, text="Minha Frequência", font=fonte_titulo).pack(pady=20)
     
-    freq_frame = ctk.CTkFrame(app)
+    # Frame scrollable para a frequência
+    freq_frame = ctk.CTkScrollableFrame(app, width=800, height=400)
     freq_frame.pack(pady=20, padx=20, fill="both", expand=True)
     
+    # Obtém as cores para efeito xadrez
+    cor_par, cor_impar = obter_cores_xadrez()
+    
+    # Dados de frequência com mais informações
     frequencias = [
-        "Programação I: 90%",
-        "Banco de Dados: 85%",
-        "Engenharia de Software: 95%",
-        "Algoritmos: 88%",
-        "Projeto Integrador: 92%",
-        "Frequência Geral: 90%"
+        {
+            "materia": "Programação I",
+            "percentual": "90%",
+            "presencas": "27",
+            "faltas": "3",
+            "total_aulas": "30"
+        },
+        {
+            "materia": "Banco de Dados",
+            "percentual": "85%",
+            "presencas": "34",
+            "faltas": "6",
+            "total_aulas": "40"
+        },
+        {
+            "materia": "Engenharia de Software",
+            "percentual": "95%",
+            "presencas": "38",
+            "faltas": "2",
+            "total_aulas": "40"
+        },
+        {
+            "materia": "Algoritmos",
+            "percentual": "88%",
+            "presencas": "35",
+            "faltas": "5",
+            "total_aulas": "40"
+        },
+        {
+            "materia": "Projeto Integrador",
+            "percentual": "92%",
+            "presencas": "23",
+            "faltas": "2",
+            "total_aulas": "25"
+        }
     ]
     
-    for freq in frequencias:
-        ctk.CTkLabel(freq_frame, text=freq, font=fonte_campos).pack(pady=5)
+    # Cria os itens de frequência com efeito xadrez
+    for idx, frequencia in enumerate(frequencias):
+        item_frame = ctk.CTkFrame(freq_frame, border_width=0, corner_radius=8)
+        if idx % 2 == 0:
+            item_frame.configure(fg_color=cor_par)
+        else:
+            item_frame.configure(fg_color=cor_impar)
+        item_frame.pack(fill="x", pady=2, padx=5)
+        
+        # Formata o texto da frequência
+        texto_principal = f"{frequencia['materia']} | Frequência: {frequencia['percentual']}"
+        texto_detalhes = f"Presenças: {frequencia['presencas']} | Faltas: {frequencia['faltas']} | Total de Aulas: {frequencia['total_aulas']}"
+        
+        # Label principal
+        freq_label = ctk.CTkLabel(
+            item_frame, 
+            text=texto_principal, 
+            font=("Arial", 14, "bold"),
+            anchor="w"
+        )
+        freq_label.pack(pady=(8, 2), padx=15, fill="x")
+        
+        # Label de detalhes
+        detalhes_label = ctk.CTkLabel(
+            item_frame, 
+            text=texto_detalhes, 
+            font=fonte_campos,
+            anchor="w",
+            text_color=("gray60", "gray40")
+        )
+        detalhes_label.pack(pady=(0, 8), padx=15, fill="x")
     
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", 
-                 font=fonte_botoes, width=250, 
-                 command=voltar_ao_menu_principal).pack(pady=30)
+    # Frame para frequência geral (destaque)
+    freq_geral_frame = ctk.CTkFrame(freq_frame, border_width=2, corner_radius=8)
+    freq_geral_frame.configure(fg_color=cor_par, border_color="#1f538d")
+    freq_geral_frame.pack(fill="x", pady=(10, 2), padx=5)
+    
+    freq_geral_label = ctk.CTkLabel(
+        freq_geral_frame, 
+        text="Frequência Geral: 90%", 
+        font=("Arial", 16, "bold"),
+        anchor="w"
+    )
+    freq_geral_label.pack(pady=12, padx=15, fill="x")
+    
+    ctk.CTkButton(app, text="<< Voltar às Avaliações", 
+                 font=fonte_botoes, width=300, 
+                 command=tela_gestao_avaliacoes_aluno).pack(pady=20)
 
 def tela_aluno():
     """Monta a tela de menu principal do perfil Aluno."""
@@ -330,18 +874,17 @@ def tela_aluno():
     app.title("Portal Educa - Aluno")
 
     ctk.CTkLabel(app, text="Bem-vindo, Aluno!", font=fonte_titulo).pack(pady=30)
-    ctk.CTkLabel(app, text="Escolha uma opção do menu para continuar.", font=fonte_campos).pack(pady=5)
+    ctk.CTkLabel(app, text="Escolha um tema para continuar:", font=fonte_subtitulo).pack(pady=5)
     
-    # Botões de navegação para funcionalidades
-    ctk.CTkButton(app, text="Acessar Diário Eletrônico", font=fonte_botoes, width=250, command=tela_acessar_diario).pack(pady=5)
-    ctk.CTkButton(app, text="Verificar Aulas", font=fonte_botoes, width=250, command=tela_verificar_aulas).pack(pady=5)
-    ctk.CTkButton(app, text="Verificar Atividades", font=fonte_botoes, width=250, command=tela_verificar_atividades_aluno).pack(pady=5)
-    ctk.CTkButton(app, text="Verificar Desempenho", font=fonte_botoes, width=250, command=tela_verificar_desempenho).pack(pady=5)
-    ctk.CTkButton(app, text="Verificar Frequência", font=fonte_botoes, width=250, command=tela_verificar_frequencia_aluno).pack(pady=5)
-    ctk.CTkButton(app, text="Chat com Professores", font=fonte_botoes, width=250, command=tela_chat_professores_aluno).pack(pady=5) 
+    # Botões de temas principais
+    ctk.CTkButton(app, text="Informações", font=fonte_botoes, width=300, command=tela_gestao_informacoes_aluno).pack(pady=10)
+    ctk.CTkButton(app, text="Aulas", font=fonte_botoes, width=300, command=tela_gestao_aulas_aluno).pack(pady=10)
+    ctk.CTkButton(app, text="Atividades", font=fonte_botoes, width=300, command=tela_gestao_atividades_aluno).pack(pady=10)
+    ctk.CTkButton(app, text="Avaliações", font=fonte_botoes, width=300, command=tela_gestao_avaliacoes_aluno).pack(pady=10)
+    ctk.CTkButton(app, text="Comunicação", font=fonte_botoes, width=300, command=tela_gestao_comunicacao_aluno).pack(pady=10)
     
     # Botão de Sair/Logout
-    ctk.CTkButton(app, text="Sair (Logout)", font=fonte_botoes, width=250, command=reiniciar_login).pack(pady=15)
+    ctk.CTkButton(app, text="Sair (Logout)", font=fonte_botoes, width=300, command=reiniciar_login).pack(pady=30)
 
 
 # =========================================================
@@ -533,7 +1076,19 @@ def simular_cadastro_sucesso(nome, email, status_label):
     
 def simular_exclusao_sucesso(item, tipo, entry, status_label):
     """Simula o sucesso da exclusão e limpa o campo."""
-    status_label.configure(text=f"{tipo} '{item}' excluído (Simulação OK).", text_color="green")
+    global DADOS_PROFESSORES, DADOS_ALUNOS, DADOS_CURSOS, DADOS_TURMAS
+    
+    # Remove o item da lista correspondente
+    if tipo == "Professor":
+        DADOS_PROFESSORES = [p for p in DADOS_PROFESSORES if p["email"] != item]
+    elif tipo == "Aluno":
+        DADOS_ALUNOS = [a for a in DADOS_ALUNOS if a["email"] != item]
+    elif tipo == "Curso":
+        DADOS_CURSOS = [c for c in DADOS_CURSOS if c["nome"] != item]
+    elif tipo == "Turma":
+        DADOS_TURMAS = [t for t in DADOS_TURMAS if t["nome"] != item]
+    
+    status_label.configure(text=f"{tipo} '{item}' excluído com sucesso!", text_color="green")
     entry.delete(0, 'end')
 
 # --- CADASTRO SIMULADO ---
@@ -562,117 +1117,124 @@ def salvar_cadastro_professor():
     simular_cadastro_sucesso(nome, email, professor_status_label)
 
 
-# --- EXCLUSÃO SIMULADA ---
-
-def acao_excluir_professor():
-    """Ação de exclusão do professor (SIMULAÇÃO)."""
-    global professor_email_excluir_entry, professor_exclusao_status_label
-    
-    email = professor_email_excluir_entry.get().strip().lower()
-    if not email:
-        professor_exclusao_status_label.configure(text="Erro: Digite o e-mail para excluir.", text_color="red")
-        return
-    
-    if email == login_professor:
-        professor_exclusao_status_label.configure(text="Erro: Professor com vínculos. (Simulação Integridade)", text_color="orange")
-        return
-
-    simular_exclusao_sucesso(email, "Professor", professor_email_excluir_entry, professor_exclusao_status_label)
-
-def acao_excluir_aluno():
-    """Ação de exclusão do aluno (SIMULAÇÃO)."""
-    global aluno_email_excluir_entry, aluno_exclusao_status_label
-    
-    email = aluno_email_excluir_entry.get().strip().lower()
-    if not email:
-        aluno_exclusao_status_label.configure(text="Erro: Digite o e-mail para excluir.", text_color="red")
-        return
-
-    simular_exclusao_sucesso(email, "Aluno", aluno_email_excluir_entry, aluno_exclusao_status_label)
-
-def acao_excluir_curso():
-    """Ação de exclusão do curso (SIMULAÇÃO)."""
-    global curso_nome_excluir_entry, curso_exclusao_status_label
-    
-    nome = curso_nome_excluir_entry.get().strip()
-    if not nome:
-        curso_exclusao_status_label.configure(text="Erro: Digite o nome do curso para excluir.", text_color="red")
-        return
-    
-    simular_exclusao_sucesso(nome, "Curso", curso_nome_excluir_entry, curso_exclusao_status_label)
-
-def acao_excluir_turma():
-    """Ação de exclusão da turma (SIMULAÇÃO)."""
-    global turma_nome_excluir_entry, turma_exclusao_status_label
-    
-    nome = turma_nome_excluir_entry.get().strip()
-    if not nome:
-        turma_exclusao_status_label.configure(text="Erro: Digite o nome da turma para excluir.", text_color="red")
-        return
-    
-    simular_exclusao_sucesso(nome, "Turma", turma_nome_excluir_entry, turma_exclusao_status_label)
-
 # --- LISTAR/VISUALIZAR SIMULADO ---
 
 def tela_listar_professores():
     """SIMULAÇÃO: Exibe a lista de professores."""
     limpar_tela()
     app.title("Coordenador - Listar Professores")
+    app.update_idletasks()
+    app.state('zoomed')
     ctk.CTkLabel(app, text="LISTA DE PROFESSORES (Simulação)", font=fonte_titulo).pack(pady=30)
     
-    professores_lista = [
-        "ID: 2 | Nome: Prof. Ana Silva | Email: teste@professor.educa",
-        "ID: 10 | Nome: Prof. Carlos | Email: carlos@professor.educa",
-        "ID: 15 | Nome: Prof. Mariana | Email: mariana@professor.educa",
-    ]
+    # Frame scrollable para a lista
+    lista_frame = ctk.CTkScrollableFrame(app, width=700, height=400)
+    lista_frame.pack(pady=10, padx=20, fill="both", expand=True)
     
-    ctk.CTkLabel(app, text="\n".join(professores_lista), font=fonte_campos, justify="left").pack(pady=10, padx=20)
+    # Cores para efeito xadrez (adaptáveis ao modo)
+    cor_par, cor_impar = obter_cores_xadrez()
     
-    ctk.CTkButton(app, text="<< Voltar à Gestão de Professor", font=fonte_botoes, width=250, command=tela_gestao_professor).pack(pady=20)
+    for idx, prof in enumerate(DADOS_PROFESSORES):
+        # Cria um frame para cada item com cor alternada
+        item_frame = ctk.CTkFrame(lista_frame, border_width=0, corner_radius=8)
+        if idx % 2 == 0:
+            item_frame.configure(fg_color=cor_par)
+        else:
+            item_frame.configure(fg_color=cor_impar)
+        item_frame.pack(fill="x", pady=2, padx=5)
+        
+        texto = f"ID: {prof['id']} | Nome: {prof['nome']} | Email: {prof['email']}"
+        ctk.CTkLabel(item_frame, text=texto, font=fonte_campos, justify="left", anchor="w").pack(pady=8, padx=10, fill="x")
+    
+    ctk.CTkButton(app, text="<< Voltar à Gestão de Professor", font=fonte_botoes, width=300, command=tela_gestao_professor).pack(pady=20)
 
 
 def tela_listar_alunos():
     """SIMULAÇÃO: Exibe a lista de alunos."""
     limpar_tela()
     app.title("Coordenador - Listar Alunos")
+    app.update_idletasks()
+    app.state('zoomed')
     ctk.CTkLabel(app, text="LISTA DE ALUNOS (Simulação)", font=fonte_titulo).pack(pady=30)
     
-    alunos_lista = [
-        "Mat: A20240001 | Nome: Aluno Bruno | Email: teste@aluno.educa",
-        "Mat: A20240002 | Nome: Aluna Luiza | Turma: 2024-A",
-        "Mat: A20240003 | Nome: Aluno Pedro | Turma: 2024-B",
-    ]
+    # Frame scrollable para a lista
+    lista_frame = ctk.CTkScrollableFrame(app, width=700, height=400)
+    lista_frame.pack(pady=10, padx=20, fill="both", expand=True)
     
-    ctk.CTkLabel(app, text="\n".join(alunos_lista), font=fonte_campos, justify="left").pack(pady=10, padx=20)
+    # Cores para efeito xadrez (adaptáveis ao modo)
+    cor_par, cor_impar = obter_cores_xadrez()
     
-    ctk.CTkButton(app, text="<< Voltar à Gestão de Aluno", font=fonte_botoes, width=250, command=tela_gestao_aluno).pack(pady=20)
+    for idx, aluno in enumerate(DADOS_ALUNOS):
+        # Cria um frame para cada item com cor alternada
+        item_frame = ctk.CTkFrame(lista_frame, border_width=0, corner_radius=8)
+        if idx % 2 == 0:
+            item_frame.configure(fg_color=cor_par)
+        else:
+            item_frame.configure(fg_color=cor_impar)
+        item_frame.pack(fill="x", pady=2, padx=5)
+        
+        texto = f"Mat: {aluno['matricula']} | Nome: {aluno['nome']} | Email: {aluno['email']} | Turma: {aluno['turma']}"
+        ctk.CTkLabel(item_frame, text=texto, font=fonte_campos, justify="left", anchor="w").pack(pady=8, padx=10, fill="x")
+    
+    ctk.CTkButton(app, text="<< Voltar à Gestão de Aluno", font=fonte_botoes, width=300, command=tela_gestao_aluno).pack(pady=20)
 
 def tela_listar_cursos():
     """SIMULAÇÃO: Exibe a lista de cursos."""
     limpar_tela()
     app.title("Coordenador - Listar Cursos")
+    app.update_idletasks()
+    app.state('zoomed')
     ctk.CTkLabel(app, text="LISTA DE CURSOS (Simulação)", font=fonte_titulo).pack(pady=30)
     
-    cursos_lista = ["Engenharia de Software", "Administração", "Ciências Contábeis"]
+    # Frame scrollable para a lista
+    lista_frame = ctk.CTkScrollableFrame(app, width=700, height=400)
+    lista_frame.pack(pady=10, padx=20, fill="both", expand=True)
     
-    ctk.CTkLabel(app, text="\n".join([f"Curso: {c}" for c in cursos_lista]), font=fonte_campos, justify="left").pack(pady=10, padx=20)
+    # Cores para efeito xadrez (adaptáveis ao modo)
+    cor_par, cor_impar = obter_cores_xadrez()
     
-    ctk.CTkButton(app, text="<< Voltar à Gestão de Curso", font=fonte_botoes, width=250, command=tela_gestao_curso).pack(pady=20)
+    for idx, curso in enumerate(DADOS_CURSOS):
+        # Cria um frame para cada item com cor alternada
+        item_frame = ctk.CTkFrame(lista_frame, border_width=0, corner_radius=8)
+        if idx % 2 == 0:
+            item_frame.configure(fg_color=cor_par)
+        else:
+            item_frame.configure(fg_color=cor_impar)
+        item_frame.pack(fill="x", pady=2, padx=5)
+        
+        texto = f"ID: {curso['id']} | Curso: {curso['nome']}"
+        ctk.CTkLabel(item_frame, text=texto, font=fonte_campos, justify="left", anchor="w").pack(pady=8, padx=10, fill="x")
+    
+    ctk.CTkButton(app, text="<< Voltar à Gestão de Curso", font=fonte_botoes, width=300, command=tela_gestao_curso).pack(pady=20)
 
 def tela_listar_turmas():
     """SIMULAÇÃO: Exibe a lista de turmas."""
     limpar_tela()
     app.title("Coordenador - Listar Turmas")
+    app.update_idletasks()
+    app.state('zoomed')
     ctk.CTkLabel(app, text="LISTA DE TURMAS (Simulação)", font=fonte_titulo).pack(pady=30)
     
-    turmas_lista = [
-        "Turma: 2024-A | Curso: Engenharia de Software | Alunos: 30",
-        "Turma: 2024-B | Curso: Administração | Alunos: 25",
-    ]
+    # Frame scrollable para a lista
+    lista_frame = ctk.CTkScrollableFrame(app, width=700, height=400)
+    lista_frame.pack(pady=10, padx=20, fill="both", expand=True)
     
-    ctk.CTkLabel(app, text="\n".join(turmas_lista), font=fonte_campos, justify="left").pack(pady=10, padx=20)
+    # Cores para efeito xadrez (adaptáveis ao modo)
+    cor_par, cor_impar = obter_cores_xadrez()
     
-    ctk.CTkButton(app, text="<< Voltar à Gestão de Turma", font=fonte_botoes, width=250, command=tela_gestao_turma).pack(pady=20)
+    for idx, turma in enumerate(DADOS_TURMAS):
+        # Cria um frame para cada item com cor alternada
+        item_frame = ctk.CTkFrame(lista_frame, border_width=0, corner_radius=8)
+        if idx % 2 == 0:
+            item_frame.configure(fg_color=cor_par)
+        else:
+            item_frame.configure(fg_color=cor_impar)
+        item_frame.pack(fill="x", pady=2, padx=5)
+        
+        texto = f"ID: {turma['id']} | Turma: {turma['nome']} | Curso: {turma['curso']} | Alunos: {turma['alunos']}"
+        ctk.CTkLabel(item_frame, text=texto, font=fonte_campos, justify="left", anchor="w").pack(pady=8, padx=10, fill="x")
+    
+    ctk.CTkButton(app, text="<< Voltar à Gestão de Turma", font=fonte_botoes, width=300, command=tela_gestao_turma).pack(pady=20)
 
 
 # =========================================================
@@ -683,6 +1245,7 @@ def tela_gestao_professor():
     """Menu modular para gestão de Professores: Cadastrar, Apagar, Listar."""
     limpar_tela()
     app.title("Coordenador - Gestão de Professor")
+    app.state('zoomed')
 
     ctk.CTkLabel(app, text="GESTÃO DE PROFESSOR", font=fonte_titulo).pack(pady=30)
 
@@ -696,6 +1259,7 @@ def tela_gestao_aluno():
     """Menu modular para gestão de Alunos: Cadastrar, Apagar, Listar."""
     limpar_tela()
     app.title("Coordenador - Gestão de Aluno")
+    app.state('zoomed')
 
     ctk.CTkLabel(app, text="GESTÃO DE ALUNO", font=fonte_titulo).pack(pady=30)
 
@@ -709,6 +1273,7 @@ def tela_gestao_curso():
     """Menu modular para gestão de Cursos: Cadastrar, Apagar, Listar."""
     limpar_tela()
     app.title("Coordenador - Gestão de Curso")
+    app.state('zoomed')
 
     ctk.CTkLabel(app, text="GESTÃO DE CURSO", font=fonte_titulo).pack(pady=30)
 
@@ -722,6 +1287,7 @@ def tela_gestao_turma():
     """Menu modular para gestão de Turmas: Cadastrar, Apagar, Listar."""
     limpar_tela()
     app.title("Coordenador - Gestão de Turma")
+    app.state('zoomed')
 
     ctk.CTkLabel(app, text="GESTÃO DE TURMA", font=fonte_titulo).pack(pady=30)
 
@@ -744,7 +1310,7 @@ def tela_coordenador():
     app.title("Portal Educa - Coordenador")
 
     ctk.CTkLabel(app, text="Bem-vindo, Coordenador!", font=fonte_titulo).pack(pady=30)
-    ctk.CTkLabel(app, text="Escolha uma entidade para gerenciar:", font=fonte_subtitulo).pack(pady=5)
+    ctk.CTkLabel(app, text="Escolha um tema para continuar:", font=fonte_subtitulo).pack(pady=5)
 
     # Botões de navegação para as telas de Gestão Modular
     ctk.CTkButton(app, text="Professor", font=fonte_botoes, width=300, command=tela_gestao_professor).pack(pady=10) 
@@ -764,6 +1330,7 @@ def tela_cadastrar_professor():
     
     limpar_tela()
     app.title("Coordenador - Cadastrar Professor")
+    app.state('zoomed')
 
     ctk.CTkLabel(app, text="Cadastrar Novo Professor", font=fonte_titulo).pack(pady=30)
     
@@ -790,6 +1357,7 @@ def tela_cadastrar_aluno():
     """Desenha a tela para cadastro de Aluno."""
     limpar_tela()
     app.title("Coordenador - Cadastrar Aluno")
+    app.state('zoomed')
 
     ctk.CTkLabel(app, text="Cadastrar Novo Aluno", font=fonte_titulo).pack(pady=30)
     
@@ -807,13 +1375,16 @@ def tela_cadastrar_curso():
     """Desenha a tela para cadastro de Curso."""
     limpar_tela()
     app.title("Coordenador - Cadastrar Curso")
+    app.state('zoomed')
 
     ctk.CTkLabel(app, text="Cadastrar Novo Curso", font=fonte_titulo).pack(pady=30)
     
     # Inputs de Dados
     ctk.CTkEntry(app, placeholder_text="Nome do Curso", font=fonte_campos, width=350).pack(pady=5)
     # Textbox para a descrição
-    ctk.CTkTextbox(app, width=350, height=100, font=fonte_campos).insert("0.0", "Descrição do Curso")
+    textbox_descricao = ctk.CTkTextbox(app, width=350, height=100, font=fonte_campos)
+    textbox_descricao.insert("0.0", "Descrição do Curso")
+    textbox_descricao.pack(pady=5)
     
     ctk.CTkButton(app, text="Salvar Cadastro (Simulação)", font=fonte_botoes, width=250).pack(pady=15)
 
@@ -824,6 +1395,7 @@ def tela_cadastrar_turma():
     """Desenha a tela para cadastro de Turma."""
     limpar_tela()
     app.title("Coordenador - Cadastrar Turma")
+    app.state('zoomed')
 
     # SIMULAÇÃO: Lista de cursos fixa, já que o DB foi removido
     lista_cursos = ["Engenharia de Software", "Administração", "Ciências Contábeis"]
@@ -850,6 +1422,7 @@ def tela_matricular_aluno_turma():
     """Permite ao Coordenador matricular um aluno em uma turma."""
     limpar_tela()
     app.title("Coordenador - Matricular Aluno")
+    app.state('zoomed')
     ctk.CTkLabel(app, text="Matricular Aluno em Turma", font=fonte_titulo).pack(pady=30)
     
     ctk.CTkEntry(app, placeholder_text="E-mail do Aluno (@aluno.educa)", font=fonte_campos, width=350).pack(pady=5)
@@ -863,164 +1436,902 @@ def tela_matricular_aluno_turma():
 # --- TELAS DE EXCLUSÃO ---
 
 def tela_excluir_professor():
-    """Desenha a tela para exclusão de Professor."""
-    global professor_email_excluir_entry, professor_exclusao_status_label
+    """Desenha a tela para exclusão de Professor com pesquisa e lista."""
+    global professor_exclusao_status_label, professor_selecionado, funcao_atualizar_lista_atual
+    
     limpar_tela()
     app.title("Coordenador - Apagar Professor")
+    app.update_idletasks()
+    app.state('zoomed')
+    
+    professor_selecionado = None
 
-    ctk.CTkLabel(app, text="Apagar Professor", font=fonte_titulo).pack(pady=30)
-    ctk.CTkLabel(app, text="Atenção: A exclusão é permanente.", font=fonte_campos).pack(pady=5)
+    ctk.CTkLabel(app, text="Apagar Professor", font=fonte_titulo).pack(pady=20)
+    ctk.CTkLabel(app, text="Atenção: A exclusão é permanente.", font=fonte_campos, text_color="orange").pack(pady=5)
 
-    # Input de Dados
-    professor_email_excluir_entry = ctk.CTkEntry(app, placeholder_text="E-mail do Professor a Apagar", font=fonte_campos, width=350)
-    professor_email_excluir_entry.pack(pady=10)
-
+    # Frame para pesquisa
+    pesquisa_frame = ctk.CTkFrame(app, fg_color="transparent")
+    pesquisa_frame.pack(pady=10, padx=20, fill="x")
+    
+    ctk.CTkLabel(pesquisa_frame, text="Pesquisar:", font=fonte_campos).pack(side="left", padx=(0, 10))
+    pesquisa_entry = ctk.CTkEntry(pesquisa_frame, placeholder_text="Digite nome ou e-mail...", font=fonte_campos, width=400)
+    pesquisa_entry.pack(side="left", fill="x", expand=True)
+    
+    # Frame para lista scrollable
+    lista_frame = ctk.CTkScrollableFrame(app, width=600, height=350)
+    lista_frame.pack(pady=10, padx=20, fill="both", expand=True)
+    
+    # Variável para armazenar os botões da lista
+    botoes_lista = []
+    
+    def atualizar_lista():
+        """Atualiza a lista de professores baseado na pesquisa."""
+        global professor_selecionado
+        # Limpa lista anterior
+        for widget in lista_frame.winfo_children():
+            widget.destroy()
+        botoes_lista.clear()
+        
+        # Reseta seleção se o item foi removido
+        if professor_selecionado:
+            # Verifica se o professor selecionado ainda existe
+            existe = any(p["email"] == professor_selecionado["email"] for p in DADOS_PROFESSORES)
+            if not existe:
+                professor_selecionado = None
+        
+        # Filtra dados
+        termo_pesquisa = pesquisa_entry.get().strip().lower()
+        if termo_pesquisa:
+            dados_filtrados = [p for p in DADOS_PROFESSORES 
+                             if termo_pesquisa in p["nome"].lower() or termo_pesquisa in p["email"].lower()]
+        else:
+            dados_filtrados = DADOS_PROFESSORES
+        
+        # Cores para efeito xadrez (adaptáveis ao modo)
+        cor_par, cor_impar = obter_cores_xadrez()
+        
+        # Cria botões para cada item
+        for idx, prof in enumerate(dados_filtrados):
+            # Verifica se é o item selecionado (comparando email)
+            is_selected = professor_selecionado and professor_selecionado.get("email") == prof.get("email")
+            
+            item_frame = ctk.CTkFrame(lista_frame, border_width=0, corner_radius=8)
+            if is_selected:
+                item_frame.configure(fg_color="#1f538d")
+            else:
+                # Aplica efeito xadrez apenas se não estiver selecionado
+                if idx % 2 == 0:
+                    item_frame.configure(fg_color=cor_par)
+                else:
+                    item_frame.configure(fg_color=cor_impar)
+            item_frame.pack(fill="x", pady=2, padx=5)
+            
+            texto_item = f"ID: {prof['id']} | {prof['nome']} | {prof['email']}"
+            item_label = ctk.CTkLabel(item_frame, text=texto_item, font=fonte_campos, anchor="w")
+            item_label.pack(side="left", padx=10, fill="x", expand=True)
+            
+            def selecionar_professor(professor=prof):
+                global professor_selecionado
+                professor_selecionado = professor
+                # Atualiza todos os itens: destaca o selecionado e mostra/esconde botões
+                for btn in botoes_lista:
+                    if btn["professor"].get("email") == professor.get("email"):
+                        # Item selecionado: destaca e esconde o botão
+                        btn["frame"].configure(fg_color="#1f538d")
+                        try:
+                            btn["button"].pack_forget()
+                        except:
+                            pass
+                    else:
+                        # Outros itens: restaura cor xadrez e mostra o botão
+                        idx_original = dados_filtrados.index(btn["professor"])
+                        if idx_original % 2 == 0:
+                            btn["frame"].configure(fg_color=cor_par)
+                        else:
+                            btn["frame"].configure(fg_color=cor_impar)
+                        # Mostra o botão novamente se estava escondido
+                        try:
+                            btn["button"].pack_info()
+                        except:
+                            # Botão não está empacotado, então empacota
+                            btn["button"].pack(side="right", padx=0, pady=0)
+                professor_exclusao_status_label.configure(
+                    text=f"Selecionado: {professor['nome']} ({professor['email']})", 
+                    text_color="green"
+                )
+            
+            selecionar_btn = ctk.CTkButton(
+                item_frame, 
+                text="Selecionar", 
+                font=fonte_botoes, 
+                width=100,
+                border_width=0,
+                corner_radius=8,
+                command=selecionar_professor
+            )
+            # Se já está selecionado, não mostra o botão
+            if not is_selected:
+                selecionar_btn.pack(side="right", padx=0, pady=0)
+            
+            botoes_lista.append({"frame": item_frame, "professor": prof, "button": selecionar_btn, "index": idx})
+    
+    # Registra a função de atualização globalmente para atualização quando o modo muda
+    funcao_atualizar_lista_atual = atualizar_lista
+    
+    pesquisa_entry.bind("<KeyRelease>", lambda e: atualizar_lista())
+    
+    # Botão de pesquisar (opcional, pesquisa já funciona em tempo real)
+    pesquisar_btn = ctk.CTkButton(
+        pesquisa_frame, 
+        text="Limpar", 
+        font=fonte_botoes, 
+        width=100,
+        command=lambda: [pesquisa_entry.delete(0, 'end'), atualizar_lista()]
+    )
+    pesquisar_btn.pack(side="left", padx=(10, 0))
+    
+    # Carrega lista inicial
+    atualizar_lista()
+    
     # Rótulo de Status
     professor_exclusao_status_label = ctk.CTkLabel(app, text="", font=fonte_campos, text_color=TEMA_TEXT_COLOR)
-    professor_exclusao_status_label.pack(pady=5)
-
-    ctk.CTkButton(app, text="APAGAR PERMANENTEMENTE", font=fonte_botoes, width=250, fg_color="red", hover_color="#B00000", command=acao_excluir_professor).pack(pady=15)
+    professor_exclusao_status_label.pack(pady=10)
     
-    ctk.CTkButton(app, text="<< Voltar à Gestão de Professor", font=fonte_botoes, width=250, command=tela_gestao_professor).pack(pady=20)
+    # Botões de ação
+    botoes_frame = ctk.CTkFrame(app, fg_color="transparent")
+    botoes_frame.pack(pady=10)
+    
+    def confirmar_exclusao():
+        global professor_selecionado
+        if professor_selecionado:
+            if professor_selecionado["email"] == login_professor:
+                professor_exclusao_status_label.configure(
+                    text="Erro: Professor com vínculos. Não pode ser excluído.", 
+                    text_color="orange"
+                )
+                return
+            email_remover = professor_selecionado["email"]
+            simular_exclusao_sucesso(
+                email_remover, 
+                "Professor", 
+                pesquisa_entry, 
+                professor_exclusao_status_label
+            )
+            professor_selecionado = None
+            atualizar_lista()
+        else:
+            professor_exclusao_status_label.configure(
+                text="Erro: Selecione um professor para excluir.", 
+                text_color="red"
+            )
+    
+    ctk.CTkButton(
+        botoes_frame, 
+        text="APAGAR PERMANENTEMENTE", 
+        font=fonte_botoes, 
+        width=250, 
+        fg_color="red", 
+        hover_color="#B00000", 
+        command=confirmar_exclusao
+    ).pack(side="left", padx=10)
+    
+    ctk.CTkButton(
+        botoes_frame, 
+        text="<< Voltar à Gestão de Professor", 
+        font=fonte_botoes, 
+        width=250, 
+        command=tela_gestao_professor
+    ).pack(side="left", padx=10)
 
 
 def tela_excluir_aluno():
-    """Desenha a tela para exclusão de Aluno."""
-    global aluno_email_excluir_entry, aluno_exclusao_status_label
+    """Desenha a tela para exclusão de Aluno com pesquisa e lista."""
+    global aluno_exclusao_status_label, aluno_selecionado, funcao_atualizar_lista_atual
+    
     limpar_tela()
     app.title("Coordenador - Apagar Aluno")
+    app.update_idletasks()
+    app.state('zoomed')
+    
+    aluno_selecionado = None
 
-    ctk.CTkLabel(app, text="Apagar Aluno", font=fonte_titulo).pack(pady=30)
-    ctk.CTkLabel(app, text="Atenção: A exclusão é permanente.", font=fonte_campos).pack(pady=5)
+    ctk.CTkLabel(app, text="Apagar Aluno", font=fonte_titulo).pack(pady=20)
+    ctk.CTkLabel(app, text="Atenção: A exclusão é permanente.", font=fonte_campos, text_color="orange").pack(pady=5)
 
-    # Input de Dados
-    aluno_email_excluir_entry = ctk.CTkEntry(app, placeholder_text="E-mail do Aluno a Apagar", font=fonte_campos, width=350)
-    aluno_email_excluir_entry.pack(pady=10)
-
+    # Frame para pesquisa
+    pesquisa_frame = ctk.CTkFrame(app, fg_color="transparent")
+    pesquisa_frame.pack(pady=10, padx=20, fill="x")
+    
+    ctk.CTkLabel(pesquisa_frame, text="Pesquisar:", font=fonte_campos).pack(side="left", padx=(0, 10))
+    pesquisa_entry = ctk.CTkEntry(pesquisa_frame, placeholder_text="Digite nome, matrícula ou e-mail...", font=fonte_campos, width=400)
+    pesquisa_entry.pack(side="left", fill="x", expand=True)
+    
+    # Frame para lista scrollable
+    lista_frame = ctk.CTkScrollableFrame(app, width=600, height=350)
+    lista_frame.pack(pady=10, padx=20, fill="both", expand=True)
+    
+    # Variável para armazenar os botões da lista
+    botoes_lista = []
+    
+    def atualizar_lista():
+        """Atualiza a lista de alunos baseado na pesquisa."""
+        global aluno_selecionado
+        # Limpa lista anterior
+        for widget in lista_frame.winfo_children():
+            widget.destroy()
+        botoes_lista.clear()
+        
+        # Reseta seleção se o item foi removido
+        if aluno_selecionado:
+            existe = any(a["email"] == aluno_selecionado["email"] for a in DADOS_ALUNOS)
+            if not existe:
+                aluno_selecionado = None
+        
+        # Filtra dados
+        termo_pesquisa = pesquisa_entry.get().strip().lower()
+        if termo_pesquisa:
+            dados_filtrados = [a for a in DADOS_ALUNOS 
+                             if termo_pesquisa in a["nome"].lower() 
+                             or termo_pesquisa in a["email"].lower()
+                             or termo_pesquisa in a["matricula"].lower()]
+        else:
+            dados_filtrados = DADOS_ALUNOS
+        
+        # Cores para efeito xadrez (adaptáveis ao modo)
+        cor_par, cor_impar = obter_cores_xadrez()
+        
+        # Cria botões para cada item
+        for idx, aluno in enumerate(dados_filtrados):
+            # Verifica se é o item selecionado
+            is_selected = aluno_selecionado and aluno_selecionado.get("email") == aluno.get("email")
+            
+            item_frame = ctk.CTkFrame(lista_frame, border_width=0, corner_radius=8)
+            if is_selected:
+                item_frame.configure(fg_color="#1f538d")
+            else:
+                # Aplica efeito xadrez apenas se não estiver selecionado
+                if idx % 2 == 0:
+                    item_frame.configure(fg_color=cor_par)
+                else:
+                    item_frame.configure(fg_color=cor_impar)
+            item_frame.pack(fill="x", pady=2, padx=5)
+            
+            texto_item = f"Mat: {aluno['matricula']} | {aluno['nome']} | {aluno['email']} | Turma: {aluno['turma']}"
+            item_label = ctk.CTkLabel(item_frame, text=texto_item, font=fonte_campos, anchor="w")
+            item_label.pack(side="left", padx=10, fill="x", expand=True)
+            
+            def selecionar_aluno(aluno_item=aluno):
+                global aluno_selecionado
+                aluno_selecionado = aluno_item
+                # Atualiza todos os itens: destaca o selecionado e mostra/esconde botões
+                for btn in botoes_lista:
+                    if btn["aluno"].get("email") == aluno_item.get("email"):
+                        # Item selecionado: destaca e esconde o botão
+                        btn["frame"].configure(fg_color="#1f538d")
+                        try:
+                            btn["button"].pack_forget()
+                        except:
+                            pass
+                    else:
+                        # Outros itens: restaura cor xadrez e mostra o botão
+                        idx_original = dados_filtrados.index(btn["aluno"])
+                        if idx_original % 2 == 0:
+                            btn["frame"].configure(fg_color=cor_par)
+                        else:
+                            btn["frame"].configure(fg_color=cor_impar)
+                        # Mostra o botão novamente se estava escondido
+                        try:
+                            btn["button"].pack_info()
+                        except:
+                            # Botão não está empacotado, então empacota
+                            btn["button"].pack(side="right", padx=0, pady=0)
+                aluno_exclusao_status_label.configure(
+                    text=f"Selecionado: {aluno_item['nome']} ({aluno_item['email']})", 
+                    text_color="green"
+                )
+            
+            selecionar_btn = ctk.CTkButton(
+                item_frame, 
+                text="Selecionar", 
+                font=fonte_botoes, 
+                width=100,
+                border_width=0,
+                corner_radius=8,
+                command=selecionar_aluno
+            )
+            # Se já está selecionado, não mostra o botão
+            if not is_selected:
+                selecionar_btn.pack(side="right", padx=0, pady=0)
+            
+            botoes_lista.append({"frame": item_frame, "aluno": aluno, "button": selecionar_btn, "index": idx})
+    
+    # Registra a função de atualização globalmente para atualização quando o modo muda
+    funcao_atualizar_lista_atual = atualizar_lista
+    
+    pesquisa_entry.bind("<KeyRelease>", lambda e: atualizar_lista())
+    
+    # Botão de limpar pesquisa
+    limpar_btn = ctk.CTkButton(
+        pesquisa_frame, 
+        text="Limpar", 
+        font=fonte_botoes, 
+        width=100,
+        command=lambda: [pesquisa_entry.delete(0, 'end'), atualizar_lista()]
+    )
+    limpar_btn.pack(side="left", padx=(10, 0))
+    
+    # Carrega lista inicial
+    atualizar_lista()
+    
     # Rótulo de Status
     aluno_exclusao_status_label = ctk.CTkLabel(app, text="", font=fonte_campos, text_color=TEMA_TEXT_COLOR)
-    aluno_exclusao_status_label.pack(pady=5)
-
-    ctk.CTkButton(app, text="APAGAR PERMANENTEMENTE", font=fonte_botoes, width=250, fg_color="red", hover_color="#B00000", command=acao_excluir_aluno).pack(pady=15)
+    aluno_exclusao_status_label.pack(pady=10)
     
-    ctk.CTkButton(app, text="<< Voltar à Gestão de Aluno", font=fonte_botoes, width=250, command=tela_gestao_aluno).pack(pady=20)
+    # Botões de ação
+    botoes_frame = ctk.CTkFrame(app, fg_color="transparent")
+    botoes_frame.pack(pady=10)
+    
+    def confirmar_exclusao():
+        global aluno_selecionado
+        if aluno_selecionado:
+            simular_exclusao_sucesso(
+                aluno_selecionado["email"], 
+                "Aluno", 
+                pesquisa_entry, 
+                aluno_exclusao_status_label
+            )
+            aluno_selecionado = None
+            atualizar_lista()
+        else:
+            aluno_exclusao_status_label.configure(
+                text="Erro: Selecione um aluno para excluir.", 
+                text_color="red"
+            )
+    
+    ctk.CTkButton(
+        botoes_frame, 
+        text="APAGAR PERMANENTEMENTE", 
+        font=fonte_botoes, 
+        width=250, 
+        fg_color="red", 
+        hover_color="#B00000", 
+        command=confirmar_exclusao
+    ).pack(side="left", padx=10)
+    
+    ctk.CTkButton(
+        botoes_frame, 
+        text="<< Voltar à Gestão de Aluno", 
+        font=fonte_botoes, 
+        width=250, 
+        command=tela_gestao_aluno
+    ).pack(side="left", padx=10)
 
 
 def tela_excluir_curso():
-    """Desenha a tela para exclusão de Curso."""
-    global curso_nome_excluir_entry, curso_exclusao_status_label
+    """Desenha a tela para exclusão de Curso com pesquisa e lista."""
+    global curso_exclusao_status_label, curso_selecionado, funcao_atualizar_lista_atual
+    
     limpar_tela()
     app.title("Coordenador - Apagar Curso")
+    app.update_idletasks()
+    app.state('zoomed')
+    
+    curso_selecionado = None
 
-    ctk.CTkLabel(app, text="Apagar Curso", font=fonte_titulo).pack(pady=30)
-    ctk.CTkLabel(app, text="Atenção: Cursos com turmas ativas não podem ser apagados.", font=fonte_campos).pack(pady=5)
+    ctk.CTkLabel(app, text="Apagar Curso", font=fonte_titulo).pack(pady=20)
+    ctk.CTkLabel(app, text="Atenção: Cursos com turmas ativas não podem ser apagados.", font=fonte_campos, text_color="orange").pack(pady=5)
 
-    # Input de Dados
-    curso_nome_excluir_entry = ctk.CTkEntry(app, placeholder_text="Nome do Curso a Apagar", font=fonte_campos, width=350)
-    curso_nome_excluir_entry.pack(pady=10)
-
+    # Frame para pesquisa
+    pesquisa_frame = ctk.CTkFrame(app, fg_color="transparent")
+    pesquisa_frame.pack(pady=10, padx=20, fill="x")
+    
+    ctk.CTkLabel(pesquisa_frame, text="Pesquisar:", font=fonte_campos).pack(side="left", padx=(0, 10))
+    pesquisa_entry = ctk.CTkEntry(pesquisa_frame, placeholder_text="Digite o nome do curso...", font=fonte_campos, width=400)
+    pesquisa_entry.pack(side="left", fill="x", expand=True)
+    
+    # Frame para lista scrollable
+    lista_frame = ctk.CTkScrollableFrame(app, width=600, height=350)
+    lista_frame.pack(pady=10, padx=20, fill="both", expand=True)
+    
+    # Variável para armazenar os botões da lista
+    botoes_lista = []
+    
+    def atualizar_lista():
+        """Atualiza a lista de cursos baseado na pesquisa."""
+        global curso_selecionado
+        # Limpa lista anterior
+        for widget in lista_frame.winfo_children():
+            widget.destroy()
+        botoes_lista.clear()
+        
+        # Reseta seleção se o item foi removido
+        if curso_selecionado:
+            existe = any(c["nome"] == curso_selecionado["nome"] for c in DADOS_CURSOS)
+            if not existe:
+                curso_selecionado = None
+        
+        # Filtra dados
+        termo_pesquisa = pesquisa_entry.get().strip().lower()
+        if termo_pesquisa:
+            dados_filtrados = [c for c in DADOS_CURSOS 
+                             if termo_pesquisa in c["nome"].lower()]
+        else:
+            dados_filtrados = DADOS_CURSOS
+        
+        # Cores para efeito xadrez (adaptáveis ao modo)
+        cor_par, cor_impar = obter_cores_xadrez()
+        
+        # Cria botões para cada item
+        for idx, curso in enumerate(dados_filtrados):
+            # Verifica se é o item selecionado
+            is_selected = curso_selecionado and curso_selecionado.get("nome") == curso.get("nome")
+            
+            item_frame = ctk.CTkFrame(lista_frame, border_width=0, corner_radius=8)
+            if is_selected:
+                item_frame.configure(fg_color="#1f538d")
+            else:
+                # Aplica efeito xadrez apenas se não estiver selecionado
+                if idx % 2 == 0:
+                    item_frame.configure(fg_color=cor_par)
+                else:
+                    item_frame.configure(fg_color=cor_impar)
+            item_frame.pack(fill="x", pady=2, padx=5)
+            
+            texto_item = f"ID: {curso['id']} | {curso['nome']}"
+            item_label = ctk.CTkLabel(item_frame, text=texto_item, font=fonte_campos, anchor="w")
+            item_label.pack(side="left", padx=10, fill="x", expand=True)
+            
+            def selecionar_curso(curso_item=curso):
+                global curso_selecionado
+                curso_selecionado = curso_item
+                # Atualiza todos os itens: destaca o selecionado e mostra/esconde botões
+                for btn in botoes_lista:
+                    if btn["curso"].get("nome") == curso_item.get("nome"):
+                        # Item selecionado: destaca e esconde o botão
+                        btn["frame"].configure(fg_color="#1f538d")
+                        try:
+                            btn["button"].pack_forget()
+                        except:
+                            pass
+                    else:
+                        # Outros itens: restaura cor xadrez e mostra o botão
+                        idx_original = dados_filtrados.index(btn["curso"])
+                        if idx_original % 2 == 0:
+                            btn["frame"].configure(fg_color=cor_par)
+                        else:
+                            btn["frame"].configure(fg_color=cor_impar)
+                        # Mostra o botão novamente se estava escondido
+                        try:
+                            btn["button"].pack_info()
+                        except:
+                            # Botão não está empacotado, então empacota
+                            btn["button"].pack(side="right", padx=0, pady=0)
+                curso_exclusao_status_label.configure(
+                    text=f"Selecionado: {curso_item['nome']}", 
+                    text_color="green"
+                )
+            
+            selecionar_btn = ctk.CTkButton(
+                item_frame, 
+                text="Selecionar", 
+                font=fonte_botoes, 
+                width=100,
+                border_width=0,
+                corner_radius=8,
+                command=selecionar_curso
+            )
+            # Se já está selecionado, não mostra o botão
+            if not is_selected:
+                selecionar_btn.pack(side="right", padx=0, pady=0)
+            
+            botoes_lista.append({"frame": item_frame, "curso": curso, "button": selecionar_btn, "index": idx})
+    
+    # Registra a função de atualização globalmente para atualização quando o modo muda
+    funcao_atualizar_lista_atual = atualizar_lista
+    
+    pesquisa_entry.bind("<KeyRelease>", lambda e: atualizar_lista())
+    
+    # Botão de limpar pesquisa
+    limpar_btn = ctk.CTkButton(
+        pesquisa_frame, 
+        text="Limpar", 
+        font=fonte_botoes, 
+        width=100,
+        command=lambda: [pesquisa_entry.delete(0, 'end'), atualizar_lista()]
+    )
+    limpar_btn.pack(side="left", padx=(10, 0))
+    
+    # Carrega lista inicial
+    atualizar_lista()
+    
     # Rótulo de Status
     curso_exclusao_status_label = ctk.CTkLabel(app, text="", font=fonte_campos, text_color=TEMA_TEXT_COLOR)
-    curso_exclusao_status_label.pack(pady=5)
-
-    ctk.CTkButton(app, text="APAGAR PERMANENTEMENTE", font=fonte_botoes, width=250, fg_color="red", hover_color="#B00000", command=acao_excluir_curso).pack(pady=15)
+    curso_exclusao_status_label.pack(pady=10)
     
-    ctk.CTkButton(app, text="<< Voltar à Gestão de Curso", font=fonte_botoes, width=250, command=tela_gestao_curso).pack(pady=20)
+    # Botões de ação
+    botoes_frame = ctk.CTkFrame(app, fg_color="transparent")
+    botoes_frame.pack(pady=10)
+    
+    def confirmar_exclusao():
+        global curso_selecionado
+        if curso_selecionado:
+            # Verifica se há turmas associadas
+            turmas_do_curso = [t for t in DADOS_TURMAS if t["curso"] == curso_selecionado["nome"]]
+            if turmas_do_curso:
+                curso_exclusao_status_label.configure(
+                    text=f"Erro: Curso possui {len(turmas_do_curso)} turma(s) ativa(s). Não pode ser excluído.", 
+                    text_color="orange"
+                )
+                return
+            simular_exclusao_sucesso(
+                curso_selecionado["nome"], 
+                "Curso", 
+                pesquisa_entry, 
+                curso_exclusao_status_label
+            )
+            curso_selecionado = None
+            atualizar_lista()
+        else:
+            curso_exclusao_status_label.configure(
+                text="Erro: Selecione um curso para excluir.", 
+                text_color="red"
+            )
+    
+    ctk.CTkButton(
+        botoes_frame, 
+        text="APAGAR PERMANENTEMENTE", 
+        font=fonte_botoes, 
+        width=250, 
+        fg_color="red", 
+        hover_color="#B00000", 
+        command=confirmar_exclusao
+    ).pack(side="left", padx=10)
+    
+    ctk.CTkButton(
+        botoes_frame, 
+        text="<< Voltar à Gestão de Curso", 
+        font=fonte_botoes, 
+        width=250, 
+        command=tela_gestao_curso
+    ).pack(side="left", padx=10)
 
 
 def tela_excluir_turma():
-    """Desenha a tela para exclusão de Turma."""
-    global turma_nome_excluir_entry, turma_exclusao_status_label
+    """Desenha a tela para exclusão de Turma com pesquisa e lista."""
+    global turma_exclusao_status_label, turma_selecionada, funcao_atualizar_lista_atual
+    
     limpar_tela()
     app.title("Coordenador - Apagar Turma")
+    app.update_idletasks()
+    app.state('zoomed')
+    
+    turma_selecionada = None
 
-    ctk.CTkLabel(app, text="Apagar Turma", font=fonte_titulo).pack(pady=30)
-    ctk.CTkLabel(app, text="Atenção: Turmas com alunos matriculados não podem ser apagadas.", font=fonte_campos).pack(pady=5)
+    ctk.CTkLabel(app, text="Apagar Turma", font=fonte_titulo).pack(pady=20)
+    ctk.CTkLabel(app, text="Atenção: Turmas com alunos matriculados não podem ser apagadas.", font=fonte_campos, text_color="orange").pack(pady=5)
 
-    # Input de Dados
-    turma_nome_excluir_entry = ctk.CTkEntry(app, placeholder_text="Nome da Turma a Apagar", font=fonte_campos, width=350)
-    turma_nome_excluir_entry.pack(pady=10)
-
+    # Frame para pesquisa
+    pesquisa_frame = ctk.CTkFrame(app, fg_color="transparent")
+    pesquisa_frame.pack(pady=10, padx=20, fill="x")
+    
+    ctk.CTkLabel(pesquisa_frame, text="Pesquisar:", font=fonte_campos).pack(side="left", padx=(0, 10))
+    pesquisa_entry = ctk.CTkEntry(pesquisa_frame, placeholder_text="Digite nome da turma ou curso...", font=fonte_campos, width=400)
+    pesquisa_entry.pack(side="left", fill="x", expand=True)
+    
+    # Frame para lista scrollable
+    lista_frame = ctk.CTkScrollableFrame(app, width=600, height=350)
+    lista_frame.pack(pady=10, padx=20, fill="both", expand=True)
+    
+    # Variável para armazenar os botões da lista
+    botoes_lista = []
+    
+    def atualizar_lista():
+        """Atualiza a lista de turmas baseado na pesquisa."""
+        global turma_selecionada
+        # Limpa lista anterior
+        for widget in lista_frame.winfo_children():
+            widget.destroy()
+        botoes_lista.clear()
+        
+        # Reseta seleção se o item foi removido
+        if turma_selecionada:
+            existe = any(t["nome"] == turma_selecionada["nome"] for t in DADOS_TURMAS)
+            if not existe:
+                turma_selecionada = None
+        
+        # Filtra dados
+        termo_pesquisa = pesquisa_entry.get().strip().lower()
+        if termo_pesquisa:
+            dados_filtrados = [t for t in DADOS_TURMAS 
+                             if termo_pesquisa in t["nome"].lower() 
+                             or termo_pesquisa in t["curso"].lower()]
+        else:
+            dados_filtrados = DADOS_TURMAS
+        
+        # Cores para efeito xadrez (adaptáveis ao modo)
+        cor_par, cor_impar = obter_cores_xadrez()
+        
+        # Cria botões para cada item
+        for idx, turma in enumerate(dados_filtrados):
+            # Verifica se é o item selecionado
+            is_selected = turma_selecionada and turma_selecionada.get("nome") == turma.get("nome")
+            
+            item_frame = ctk.CTkFrame(lista_frame, border_width=0, corner_radius=8)
+            if is_selected:
+                item_frame.configure(fg_color="#1f538d")
+            else:
+                # Aplica efeito xadrez apenas se não estiver selecionado
+                if idx % 2 == 0:
+                    item_frame.configure(fg_color=cor_par)
+                else:
+                    item_frame.configure(fg_color=cor_impar)
+            item_frame.pack(fill="x", pady=2, padx=5)
+            
+            texto_item = f"ID: {turma['id']} | Turma: {turma['nome']} | Curso: {turma['curso']} | Alunos: {turma['alunos']}"
+            item_label = ctk.CTkLabel(item_frame, text=texto_item, font=fonte_campos, anchor="w")
+            item_label.pack(side="left", padx=10, fill="x", expand=True)
+            
+            def selecionar_turma(turma_item=turma):
+                global turma_selecionada
+                turma_selecionada = turma_item
+                # Atualiza todos os itens: destaca o selecionado e mostra/esconde botões
+                for btn in botoes_lista:
+                    if btn["turma"].get("nome") == turma_item.get("nome"):
+                        # Item selecionado: destaca e esconde o botão
+                        btn["frame"].configure(fg_color="#1f538d")
+                        try:
+                            btn["button"].pack_forget()
+                        except:
+                            pass
+                    else:
+                        # Outros itens: restaura cor xadrez e mostra o botão
+                        idx_original = dados_filtrados.index(btn["turma"])
+                        if idx_original % 2 == 0:
+                            btn["frame"].configure(fg_color=cor_par)
+                        else:
+                            btn["frame"].configure(fg_color=cor_impar)
+                        # Mostra o botão novamente se estava escondido
+                        try:
+                            btn["button"].pack_info()
+                        except:
+                            # Botão não está empacotado, então empacota
+                            btn["button"].pack(side="right", padx=0, pady=0)
+                turma_exclusao_status_label.configure(
+                    text=f"Selecionado: {turma_item['nome']} ({turma_item['curso']})", 
+                    text_color="green"
+                )
+            
+            selecionar_btn = ctk.CTkButton(
+                item_frame, 
+                text="Selecionar", 
+                font=fonte_botoes, 
+                width=100,
+                border_width=0,
+                corner_radius=8,
+                command=selecionar_turma
+            )
+            # Se já está selecionado, não mostra o botão
+            if not is_selected:
+                selecionar_btn.pack(side="right", padx=0, pady=0)
+            
+            botoes_lista.append({"frame": item_frame, "turma": turma, "button": selecionar_btn, "index": idx})
+    
+    # Registra a função de atualização globalmente para atualização quando o modo muda
+    funcao_atualizar_lista_atual = atualizar_lista
+    
+    pesquisa_entry.bind("<KeyRelease>", lambda e: atualizar_lista())
+    
+    # Botão de limpar pesquisa
+    limpar_btn = ctk.CTkButton(
+        pesquisa_frame, 
+        text="Limpar", 
+        font=fonte_botoes, 
+        width=100,
+        command=lambda: [pesquisa_entry.delete(0, 'end'), atualizar_lista()]
+    )
+    limpar_btn.pack(side="left", padx=(10, 0))
+    
+    # Carrega lista inicial
+    atualizar_lista()
+    
     # Rótulo de Status
     turma_exclusao_status_label = ctk.CTkLabel(app, text="", font=fonte_campos, text_color=TEMA_TEXT_COLOR)
-    turma_exclusao_status_label.pack(pady=5)
-
-    ctk.CTkButton(app, text="APAGAR PERMANENTEMENTE", font=fonte_botoes, width=250, fg_color="red", hover_color="#B00000", command=acao_excluir_turma).pack(pady=15)
+    turma_exclusao_status_label.pack(pady=10)
     
-    ctk.CTkButton(app, text="<< Voltar à Gestão de Turma", font=fonte_botoes, width=250, command=tela_gestao_turma).pack(pady=20)
+    # Botões de ação
+    botoes_frame = ctk.CTkFrame(app, fg_color="transparent")
+    botoes_frame.pack(pady=10)
+    
+    def confirmar_exclusao():
+        global turma_selecionada
+        if turma_selecionada:
+            # Verifica se há alunos matriculados
+            if turma_selecionada["alunos"] > 0:
+                turma_exclusao_status_label.configure(
+                    text=f"Erro: Turma possui {turma_selecionada['alunos']} aluno(s) matriculado(s). Não pode ser excluída.", 
+                    text_color="orange"
+                )
+                return
+            simular_exclusao_sucesso(
+                turma_selecionada["nome"], 
+                "Turma", 
+                pesquisa_entry, 
+                turma_exclusao_status_label
+            )
+            turma_selecionada = None
+            atualizar_lista()
+        else:
+            turma_exclusao_status_label.configure(
+                text="Erro: Selecione uma turma para excluir.", 
+                text_color="red"
+            )
+    
+    ctk.CTkButton(
+        botoes_frame, 
+        text="APAGAR PERMANENTEMENTE", 
+        font=fonte_botoes, 
+        width=250, 
+        fg_color="red", 
+        hover_color="#B00000", 
+        command=confirmar_exclusao
+    ).pack(side="left", padx=10)
+    
+    ctk.CTkButton(
+        botoes_frame, 
+        text="<< Voltar à Gestão de Turma", 
+        font=fonte_botoes, 
+        width=250, 
+        command=tela_gestao_turma
+    ).pack(side="left", padx=10)
 
 
 # =========================================================
 # REGIÃO: GERENCIAMENTO DE TELAS - MÓDULO PROFESSOR
 # =========================================================
 
+# --- Telas de Gestão (Subtemas) para Professor ---
+
+def tela_gestao_turmas_prof():
+    """Menu de gestão de Turmas para Professor."""
+    limpar_tela()
+    app.title("Professor - Gestão de Turmas")
+    app.state('zoomed')
+
+    ctk.CTkLabel(app, text="GESTÃO DE TURMAS", font=fonte_titulo).pack(pady=30)
+
+    ctk.CTkButton(app, text="Visualizar Turmas", font=fonte_botoes, width=300, command=tela_visualizar_turmas).pack(pady=10)
+    
+    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=300, command=tela_professor).pack(pady=30)
+
+def tela_gestao_atividades_prof():
+    """Menu de gestão de Atividades para Professor."""
+    limpar_tela()
+    app.title("Professor - Gestão de Atividades")
+    app.state('zoomed')
+
+    ctk.CTkLabel(app, text="GESTÃO DE ATIVIDADES", font=fonte_titulo).pack(pady=30)
+
+    ctk.CTkButton(app, text="Postar Atividades", font=fonte_botoes, width=300, command=tela_postar_atividades).pack(pady=10)
+    ctk.CTkButton(app, text="Visualizar Atividades", font=fonte_botoes, width=300, command=tela_visualizar_atividades_prof).pack(pady=10)
+    
+    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=300, command=tela_professor).pack(pady=30)
+
+def tela_gestao_notas_prof():
+    """Menu de gestão de Notas para Professor."""
+    limpar_tela()
+    app.title("Professor - Gestão de Notas")
+    app.state('zoomed')
+
+    ctk.CTkLabel(app, text="GESTÃO DE NOTAS", font=fonte_titulo).pack(pady=30)
+
+    ctk.CTkButton(app, text="Lançar Notas", font=fonte_botoes, width=300, command=tela_lancar_notas).pack(pady=10)
+    ctk.CTkButton(app, text="Visualizar Notas", font=fonte_botoes, width=300, command=tela_visualizar_notas_prof).pack(pady=10)
+    
+    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=300, command=tela_professor).pack(pady=30)
+
+def tela_gestao_frequencia_prof():
+    """Menu de gestão de Frequência para Professor."""
+    limpar_tela()
+    app.title("Professor - Gestão de Frequência")
+    app.state('zoomed')
+
+    ctk.CTkLabel(app, text="GESTÃO DE FREQUÊNCIA", font=fonte_titulo).pack(pady=30)
+
+    ctk.CTkButton(app, text="Lançar Frequência", font=fonte_botoes, width=300, command=tela_lancar_frequencia).pack(pady=10)
+    ctk.CTkButton(app, text="Visualizar Frequência", font=fonte_botoes, width=300, command=tela_visualizar_frequencia_prof).pack(pady=10)
+    
+    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=300, command=tela_professor).pack(pady=30)
+
+def tela_gestao_comunicacao_prof():
+    """Menu de gestão de Comunicação para Professor."""
+    limpar_tela()
+    app.title("Professor - Comunicação")
+    app.state('zoomed')
+
+    ctk.CTkLabel(app, text="COMUNICAÇÃO", font=fonte_titulo).pack(pady=30)
+
+    ctk.CTkButton(app, text="Chat com Alunos", font=fonte_botoes, width=300, command=tela_chat_alunos_prof).pack(pady=10)
+    
+    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=300, command=tela_professor).pack(pady=30)
+
+# --- Telas Específicas do Professor ---
+
 def tela_visualizar_turmas():
     """Desenha a tela de visualização de Turmas atribuídas."""
     limpar_tela()
     app.title("Professor - Visualizar Turmas")
+    app.state('zoomed')
     ctk.CTkLabel(app, text="Visualizar Turmas Atribuídas", font=fonte_titulo).pack(pady=30)
     ctk.CTkLabel(app, text="Aqui seria a lista de turmas.", font=fonte_campos).pack(pady=10)
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=250, command=voltar_ao_menu_principal).pack(pady=30)
+    ctk.CTkButton(app, text="<< Voltar à Gestão de Turmas", font=fonte_botoes, width=300, command=tela_gestao_turmas_prof).pack(pady=30)
 
 def tela_postar_atividades():
     """Desenha a tela para postagem de Atividades."""
     limpar_tela()
     app.title("Professor - Postar Atividades")
+    app.state('zoomed')
     ctk.CTkLabel(app, text="Postar Nova Atividade", font=fonte_titulo).pack(pady=30)
     
     ctk.CTkEntry(app, placeholder_text="Título da Atividade", font=fonte_campos, width=350).pack(pady=5)
-    ctk.CTkTextbox(app, width=350, height=100, font=fonte_campos).insert("0.0", "Descrição da Atividade")
+    textbox_atividade = ctk.CTkTextbox(app, width=350, height=100, font=fonte_campos)
+    textbox_atividade.insert("0.0", "Descrição da Atividade")
+    textbox_atividade.pack(pady=5)
     ctk.CTkButton(app, text="Postar (Simulação)", font=fonte_botoes, width=250).pack(pady=15)
     
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=250, command=voltar_ao_menu_principal).pack(pady=30)
+    ctk.CTkButton(app, text="<< Voltar à Gestão de Atividades", font=fonte_botoes, width=300, command=tela_gestao_atividades_prof).pack(pady=30)
 
 def tela_lancar_notas():
     """Desenha a tela para lançamento de Notas."""
     limpar_tela()
     app.title("Professor - Lançar Notas")
+    app.state('zoomed')
     ctk.CTkLabel(app, text="Lançar Notas", font=fonte_titulo).pack(pady=30)
     
     ctk.CTkEntry(app, placeholder_text="Nome do Aluno", font=fonte_campos, width=350).pack(pady=5)
     ctk.CTkEntry(app, placeholder_text="Nota (0-10)", font=fonte_campos, width=350).pack(pady=5)
     ctk.CTkButton(app, text="Lançar (Simulação)", font=fonte_botoes, width=250).pack(pady=15)
 
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=250, command=voltar_ao_menu_principal).pack(pady=30)
+    ctk.CTkButton(app, text="<< Voltar à Gestão de Notas", font=fonte_botoes, width=300, command=tela_gestao_notas_prof).pack(pady=30)
 
 def tela_lancar_frequencia():
     """Desenha a tela para lançamento de Frequência."""
     limpar_tela()
     app.title("Professor - Lançar Frequência")
+    app.state('zoomed')
     ctk.CTkLabel(app, text="Lançar Frequência", font=fonte_titulo).pack(pady=30)
     
     ctk.CTkEntry(app, placeholder_text="Nome do Aluno", font=fonte_campos, width=350).pack(pady=5)
     ctk.CTkEntry(app, placeholder_text="Frequência (P/F)", font=fonte_campos, width=350).pack(pady=5)
     ctk.CTkButton(app, text="Lançar (Simulação)", font=fonte_botoes, width=250).pack(pady=15)
     
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=250, command=voltar_ao_menu_principal).pack(pady=30)
+    ctk.CTkButton(app, text="<< Voltar à Gestão de Frequência", font=fonte_botoes, width=300, command=tela_gestao_frequencia_prof).pack(pady=30)
 
 def tela_visualizar_atividades_prof():
     """Desenha a tela de visualização de Atividades postadas."""
     limpar_tela()
     app.title("Professor - Visualizar Atividades")
+    app.state('zoomed')
     ctk.CTkLabel(app, text="Atividades Postadas", font=fonte_titulo).pack(pady=30)
     ctk.CTkLabel(app, text="Aqui seria a lista das suas atividades postadas.", font=fonte_campos).pack(pady=10)
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=250, command=voltar_ao_menu_principal).pack(pady=30)
+    ctk.CTkButton(app, text="<< Voltar à Gestão de Atividades", font=fonte_botoes, width=300, command=tela_gestao_atividades_prof).pack(pady=30)
 
 def tela_visualizar_notas_prof():
     """Desenha a tela de visualização de Notas lançadas."""
     limpar_tela()
     app.title("Professor - Visualizar Notas")
+    app.state('zoomed')
     ctk.CTkLabel(app, text="Notas Lançadas", font=fonte_titulo).pack(pady=30)
     ctk.CTkLabel(app, text="Aqui seria a visualização das notas por turma.", font=fonte_campos).pack(pady=10)
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=250, command=voltar_ao_menu_principal).pack(pady=30)
+    ctk.CTkButton(app, text="<< Voltar à Gestão de Notas", font=fonte_botoes, width=300, command=tela_gestao_notas_prof).pack(pady=30)
 
 def tela_visualizar_frequencia_prof():
     """Desenha a tela de visualização de Frequência lançada."""
     limpar_tela()
     app.title("Professor - Visualizar Frequência")
+    app.state('zoomed')
     ctk.CTkLabel(app, text="Frequência Lançada", font=fonte_titulo).pack(pady=30)
     ctk.CTkLabel(app, text="Aqui seria a visualização da frequência por turma.", font=fonte_campos).pack(pady=10)
-    ctk.CTkButton(app, text="<< Voltar ao Menu Principal", font=fonte_botoes, width=250, command=voltar_ao_menu_principal).pack(pady=30)
+    ctk.CTkButton(app, text="<< Voltar à Gestão de Frequência", font=fonte_botoes, width=300, command=tela_gestao_frequencia_prof).pack(pady=30)
 
 def encerrar_chat_e_voltar():
     """Salva o histórico e volta ao menu principal."""
@@ -1037,6 +2348,7 @@ def tela_chat_alunos_prof():
     
     limpar_tela()
     app.title("Professor - Chat com Alunos")
+    app.state('zoomed')
     ctk.CTkLabel(app, text="Chat Global", font=fonte_titulo).pack(pady=10)
 
     # Textbox para histórico de mensagens (readonly)
@@ -1072,12 +2384,16 @@ def tela_chat_alunos_prof():
 
     ctk.CTkButton(input_frame, text="Enviar", font=fonte_botoes, width=80, command=enviar_mensagem).pack(side="left", padx=(0, 10))
     
+    def voltar_comunicacao():
+        save_chat_history(MENSAGENS_CHAT)
+        tela_gestao_comunicacao_prof()
+    
     ctk.CTkButton(
         input_frame, 
-        text="Voltar ao Menu", 
+        text="Voltar à Comunicação", 
         font=fonte_botoes, 
         width=150, 
-        command=encerrar_chat_e_voltar, 
+        command=voltar_comunicacao, 
         fg_color="#4CAF50", 
         hover_color="#388E3C"
     ).pack(side="left", padx=(0, 10))
@@ -1099,6 +2415,7 @@ def tela_chat_professores_aluno():
     
     limpar_tela()
     app.title("Aluno - Chat com Professores")
+    app.state('zoomed')
     ctk.CTkLabel(app, text="Chat Global", font=fonte_titulo).pack(pady=10)
 
     # Textbox para histórico de mensagens (readonly)
@@ -1134,12 +2451,16 @@ def tela_chat_professores_aluno():
 
     ctk.CTkButton(input_frame, text="Enviar", font=fonte_botoes, width=80, command=enviar_mensagem).pack(side="left", padx=(0, 10))
     
+    def voltar_comunicacao_aluno():
+        save_chat_history(MENSAGENS_CHAT)
+        tela_gestao_comunicacao_aluno()
+    
     ctk.CTkButton(
         input_frame, 
-        text="Voltar ao Menu", 
+        text="Voltar à Comunicação", 
         font=fonte_botoes, 
         width=150, 
-        command=encerrar_chat_e_voltar, 
+        command=voltar_comunicacao_aluno, 
         fg_color="#4CAF50", 
         hover_color="#388E3C"
     ).pack(side="left", padx=(0, 10))
