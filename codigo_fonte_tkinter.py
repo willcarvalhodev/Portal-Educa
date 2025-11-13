@@ -1,5 +1,12 @@
 import customtkinter as ctk
 from chat_history import load_chat_history, save_chat_history
+from logged_users import (
+    add_logged_user,
+    remove_logged_user,
+    get_logged_users,
+    clear_logged_users
+)
+from datetime import datetime
 
 # =========================================================
 # REGIÃO: VARIÁVEIS DE ESTADO GLOBAL E CREDENCIAIS FIXAS
@@ -29,6 +36,9 @@ CREDENCIAS = {
 email_validado = None
 perfil_logado = None
 
+# Nota: Usuários logados agora são gerenciados via arquivo JSON compartilhado
+# usando o módulo logged_users.py para permitir múltiplas instâncias do programa
+
 # Variáveis globais para os Entrys
 professor_nome_entry = None
 professor_email_entry = None
@@ -56,6 +66,7 @@ senha_entry = None
 button_login = None
 btn_mode_toggle = None
 btn_exit = None
+chat_history_box = None  # Referência global ao painel de mensagens do chat
 
 # HISTÓRICO DE CHAT SIMULADO
 try:
@@ -155,9 +166,11 @@ def Verificar_Perfil(email):
 
 def limpar_tela():
     """Remove todos os widgets visíveis na tela, exceto os botões persistentes."""
-    global funcao_atualizar_lista_atual
+    global funcao_atualizar_lista_atual, chat_history_box
     # Reseta a função de atualização quando limpa a tela
     funcao_atualizar_lista_atual = None
+    # Reseta a referência ao painel de mensagens do chat
+    chat_history_box = None
     for widget in app.winfo_children():
         if widget not in [btn_mode_toggle, btn_exit, version_label]:
             widget.destroy()
@@ -224,6 +237,11 @@ def toggle_appearance_mode():
         border_color=new_border_color,
         text_color=TEMA_TEXT_COLOR 
     )
+    
+    # Atualiza a borda do painel de mensagens do chat se existir
+    global chat_history_box
+    if chat_history_box is not None:
+        chat_history_box.configure(border_color=new_border_color)
     
     # Atualiza as listas se estivermos em uma tela com lista
     atualizar_lista_se_modo_mudou()
@@ -904,7 +922,7 @@ def voltar_ao_menu_principal():
 
 def Tentar_Login(event=None):
     """Verifica a senha e, em caso de sucesso, chama a tela de menu correta (SIMULAÇÃO)."""
-    global perfil_logado 
+    global perfil_logado, email_validado
     
     app.focus() 
     
@@ -919,6 +937,9 @@ def Tentar_Login(event=None):
         
         # SUCESSO NO LOGIN
         perfil_logado = credencial["perfil"]
+        
+        # Registra o usuário na lista de logados (arquivo compartilhado)
+        add_logged_user(email_validado, perfil_logado)
         
         # Redireciona para o menu principal do perfil
         if perfil_logado == "Coordenador":
@@ -985,6 +1006,10 @@ def reiniciar_login():
     """Redefine o estado da aplicação e exibe a tela de login inicial."""
     global email_validado, perfil_logado
     global label_bem_vindo, resultado_label, email_entry, button_email, senha_entry, button_login
+    
+    # Remove o usuário da lista de logados ao fazer logout (arquivo compartilhado)
+    if email_validado:
+        remove_logged_user(email_validado)
     
     # Reseta o estado
     email_validado = None
@@ -1317,6 +1342,7 @@ def tela_coordenador():
     ctk.CTkButton(app, text="Aluno", font=fonte_botoes, width=300, command=tela_gestao_aluno).pack(pady=10)
     ctk.CTkButton(app, text="Curso", font=fonte_botoes, width=300, command=tela_gestao_curso).pack(pady=10)
     ctk.CTkButton(app, text="Turma", font=fonte_botoes, width=300, command=tela_gestao_turma).pack(pady=10)
+    ctk.CTkButton(app, text="Perfis Logados", font=fonte_botoes, width=300, command=tela_perfis_logados, fg_color="#9C27B0", hover_color="#7B1FA2").pack(pady=10)
     
     # Botão de Sair/Logout
     ctk.CTkButton(app, text="Sair (Logout)", font=fonte_botoes, width=300, command=reiniciar_login).pack(pady=30)
@@ -2340,7 +2366,7 @@ def encerrar_chat_e_voltar():
 
 def tela_chat_alunos_prof():
     """Desenha a tela de chat para o Professor interagir com os Alunos."""
-    global MENSAGENS_CHAT
+    global MENSAGENS_CHAT, chat_history_box
     
     # Garantir que MENSAGENS_CHAT está carregado
     if not MENSAGENS_CHAT:
@@ -2351,8 +2377,20 @@ def tela_chat_alunos_prof():
     app.state('zoomed')
     ctk.CTkLabel(app, text="Chat Global", font=fonte_titulo).pack(pady=10)
 
-    # Textbox para histórico de mensagens (readonly)
-    chat_history_box = ctk.CTkTextbox(app, width=500, height=450, font=fonte_campos, state="disabled")
+    # Determina a cor da borda baseada no tema atual
+    current_mode = ctk.get_appearance_mode()
+    border_color = BTN_BORDER_COLOR_DARK if current_mode == "Dark" else BTN_BORDER_COLOR_LIGHT
+
+    # Textbox para histórico de mensagens (readonly) com borda
+    chat_history_box = ctk.CTkTextbox(
+        app, 
+        width=500, 
+        height=450, 
+        font=fonte_campos, 
+        state="disabled",
+        border_width=2,
+        border_color=border_color
+    )
     chat_history_box.pack(pady=10, padx=20)
     
     def atualizar_historico():
@@ -2383,6 +2421,21 @@ def tela_chat_alunos_prof():
     chat_input_entry.focus_set() 
 
     ctk.CTkButton(input_frame, text="Enviar", font=fonte_botoes, width=80, command=enviar_mensagem).pack(side="left", padx=(0, 10))
+    
+    def limpar_chat():
+        """Limpa o histórico do chat e atualiza a interface."""
+        limpar_historico_chat()
+        atualizar_historico()
+    
+    ctk.CTkButton(
+        input_frame, 
+        text="Limpar Chat", 
+        font=fonte_botoes, 
+        width=120, 
+        command=limpar_chat, 
+        fg_color="#F44336", 
+        hover_color="#D32F2F"
+    ).pack(side="left", padx=(0, 10))
     
     def voltar_comunicacao():
         save_chat_history(MENSAGENS_CHAT)
@@ -2407,7 +2460,7 @@ def tela_chat_alunos_prof():
 # A função tela_chat_professores_aluno deve ser atualizada de forma similar
 def tela_chat_professores_aluno():
     """Desenha a tela de chat para o Aluno interagir com os Professores."""
-    global MENSAGENS_CHAT
+    global MENSAGENS_CHAT, chat_history_box
     
     # Garantir que MENSAGENS_CHAT está carregado
     if not MENSAGENS_CHAT:
@@ -2418,8 +2471,20 @@ def tela_chat_professores_aluno():
     app.state('zoomed')
     ctk.CTkLabel(app, text="Chat Global", font=fonte_titulo).pack(pady=10)
 
-    # Textbox para histórico de mensagens (readonly)
-    chat_history_box = ctk.CTkTextbox(app, width=500, height=450, font=fonte_campos, state="disabled")
+    # Determina a cor da borda baseada no tema atual
+    current_mode = ctk.get_appearance_mode()
+    border_color = BTN_BORDER_COLOR_DARK if current_mode == "Dark" else BTN_BORDER_COLOR_LIGHT
+
+    # Textbox para histórico de mensagens (readonly) com borda
+    chat_history_box = ctk.CTkTextbox(
+        app, 
+        width=500, 
+        height=450, 
+        font=fonte_campos, 
+        state="disabled",
+        border_width=2,
+        border_color=border_color
+    )
     chat_history_box.pack(pady=10, padx=20)
     
     def atualizar_historico():
@@ -2451,6 +2516,21 @@ def tela_chat_professores_aluno():
 
     ctk.CTkButton(input_frame, text="Enviar", font=fonte_botoes, width=80, command=enviar_mensagem).pack(side="left", padx=(0, 10))
     
+    def limpar_chat():
+        """Limpa o histórico do chat e atualiza a interface."""
+        limpar_historico_chat()
+        atualizar_historico()
+    
+    ctk.CTkButton(
+        input_frame, 
+        text="Limpar Chat", 
+        font=fonte_botoes, 
+        width=120, 
+        command=limpar_chat, 
+        fg_color="#F44336", 
+        hover_color="#D32F2F"
+    ).pack(side="left", padx=(0, 10))
+    
     def voltar_comunicacao_aluno():
         save_chat_history(MENSAGENS_CHAT)
         tela_gestao_comunicacao_aluno()
@@ -2470,11 +2550,300 @@ def tela_chat_professores_aluno():
     atualizar_historico()
 
 
+# =========================================================
+# REGIÃO: TELA DE PERFIS LOGADOS (APENAS COORDENADOR)
+# =========================================================
+
+def tela_perfis_logados():
+    """Tela exclusiva do coordenador para visualizar todos os perfis logados simultaneamente."""
+    limpar_tela()
+    app.update_idletasks()
+    app.state('zoomed')
+    app.title("Portal Educa - Coordenador - Perfis Logados")
+    
+    # Verifica se é coordenador
+    if perfil_logado != "Coordenador":
+        ctk.CTkLabel(
+            app,
+            text="Acesso negado. Apenas coordenadores podem acessar esta tela.",
+            font=fonte_subtitulo,
+            text_color="red"
+        ).pack(pady=50)
+        ctk.CTkButton(
+            app,
+            text="Voltar",
+            font=fonte_botoes,
+            width=200,
+            command=tela_coordenador
+        ).pack(pady=20)
+        return
+    
+    # Título
+    ctk.CTkLabel(
+        app,
+        text="Perfis Logados no Sistema",
+        font=fonte_titulo
+    ).pack(pady=20)
+    
+    # Frame principal com scroll
+    main_frame = ctk.CTkScrollableFrame(app, width=1000, height=600)
+    main_frame.pack(pady=10, padx=20, fill="both", expand=True)
+    
+    # Label de status
+    status_label = ctk.CTkLabel(
+        main_frame,
+        text="",
+        font=fonte_subtitulo,
+        text_color="gray"
+    )
+    status_label.pack(pady=10)
+    
+    # Frame para lista de usuários
+    usuarios_frame = ctk.CTkFrame(main_frame)
+    usuarios_frame.pack(pady=10, padx=20, fill="both", expand=True)
+    
+    def atualizar_lista_usuarios():
+        """Atualiza a lista de usuários logados."""
+        # Carrega usuários do arquivo compartilhado
+        USUARIOS_LOGADOS = get_logged_users()
+        
+        # Converte timestamps de string para datetime se necessário
+        for usuario in USUARIOS_LOGADOS:
+            if isinstance(usuario.get('timestamp'), str):
+                try:
+                    usuario['timestamp'] = datetime.fromisoformat(usuario['timestamp'])
+                except:
+                    # Se falhar, cria um timestamp atual
+                    usuario['timestamp'] = datetime.now()
+        
+        # Limpa frame de usuários
+        for widget in usuarios_frame.winfo_children():
+            widget.destroy()
+        
+        # Atualiza status
+        total_usuarios = len(USUARIOS_LOGADOS)
+        if total_usuarios == 0:
+            status_label.configure(
+                text="Nenhum usuário logado no momento",
+                text_color="yellow"
+            )
+            ctk.CTkLabel(
+                usuarios_frame,
+                text="Não há usuários logados no sistema no momento.",
+                font=fonte_campos,
+                text_color="gray"
+            ).pack(pady=50)
+        else:
+            status_label.configure(
+                text=f"Total de usuários logados: {total_usuarios}",
+                text_color="green"
+            )
+            
+            # Cabeçalho da tabela
+            header_frame = ctk.CTkFrame(usuarios_frame)
+            header_frame.pack(pady=10, padx=10, fill="x")
+            
+            ctk.CTkLabel(
+                header_frame,
+                text="E-mail",
+                font=fonte_subtitulo,
+                width=300
+            ).pack(side="left", padx=10)
+            
+            ctk.CTkLabel(
+                header_frame,
+                text="Perfil",
+                font=fonte_subtitulo,
+                width=150
+            ).pack(side="left", padx=10)
+            
+            ctk.CTkLabel(
+                header_frame,
+                text="Data de Login",
+                font=fonte_subtitulo,
+                width=120
+            ).pack(side="left", padx=10)
+            
+            ctk.CTkLabel(
+                header_frame,
+                text="Hora de Login",
+                font=fonte_subtitulo,
+                width=120
+            ).pack(side="left", padx=10)
+            
+            ctk.CTkLabel(
+                header_frame,
+                text="Tempo Online",
+                font=fonte_subtitulo,
+                width=150
+            ).pack(side="left", padx=10)
+            
+            # Lista de usuários
+            for i, usuario in enumerate(USUARIOS_LOGADOS):
+                # Calcula tempo online
+                tempo_online = datetime.now() - usuario["timestamp"]
+                horas = tempo_online.seconds // 3600
+                minutos = (tempo_online.seconds % 3600) // 60
+                segundos = tempo_online.seconds % 60
+                tempo_str = f"{horas:02d}:{minutos:02d}:{segundos:02d}"
+                
+                # Define cor do perfil
+                perfil = usuario["perfil"]
+                if perfil == "Coordenador":
+                    cor_perfil = "#9C27B0"
+                elif perfil == "Professor":
+                    cor_perfil = "#2196F3"
+                elif perfil == "Aluno":
+                    cor_perfil = "#4CAF50"
+                else:
+                    cor_perfil = "gray"
+                
+                # Frame para cada usuário
+                usuario_frame = ctk.CTkFrame(usuarios_frame)
+                usuario_frame.pack(pady=5, padx=10, fill="x")
+                
+                # E-mail
+                ctk.CTkLabel(
+                    usuario_frame,
+                    text=usuario["email"],
+                    font=fonte_campos,
+                    width=300,
+                    anchor="w"
+                ).pack(side="left", padx=10)
+                
+                # Perfil
+                ctk.CTkLabel(
+                    usuario_frame,
+                    text=perfil,
+                    font=fonte_campos,
+                    width=150,
+                    text_color=cor_perfil,
+                    anchor="w"
+                ).pack(side="left", padx=10)
+                
+                # Data
+                ctk.CTkLabel(
+                    usuario_frame,
+                    text=usuario["data_login"],
+                    font=fonte_campos,
+                    width=120,
+                    anchor="w"
+                ).pack(side="left", padx=10)
+                
+                # Hora
+                ctk.CTkLabel(
+                    usuario_frame,
+                    text=usuario["hora_login"],
+                    font=fonte_campos,
+                    width=120,
+                    anchor="w"
+                ).pack(side="left", padx=10)
+                
+                # Tempo online
+                ctk.CTkLabel(
+                    usuario_frame,
+                    text=tempo_str,
+                    font=fonte_campos,
+                    width=150,
+                    text_color="green",
+                    anchor="w"
+                ).pack(side="left", padx=10)
+        
+        # Atualiza automaticamente a cada 5 segundos
+        app.after(5000, atualizar_lista_usuarios)
+    
+    # Frame para botões
+    botoes_frame = ctk.CTkFrame(main_frame)
+    botoes_frame.pack(pady=10, fill="x")
+    
+    # Botão para atualizar manualmente
+    ctk.CTkButton(
+        botoes_frame,
+        text="Atualizar Lista",
+        font=fonte_botoes,
+        width=200,
+        command=atualizar_lista_usuarios
+    ).pack(side="left", padx=10)
+    
+    # Botão para limpar lista (útil para testes)
+    def limpar_lista():
+        """Limpa todos os usuários logados."""
+        clear_logged_users()
+        atualizar_lista_usuarios()
+        atualizar_estatisticas()
+    
+    ctk.CTkButton(
+        botoes_frame,
+        text="Limpar Lista (Testes)",
+        font=fonte_botoes,
+        width=200,
+        command=limpar_lista,
+        fg_color="#F44336",
+        hover_color="#D32F2F"
+    ).pack(side="left", padx=10)
+    
+    # Estatísticas
+    stats_frame = ctk.CTkFrame(main_frame)
+    stats_frame.pack(pady=10, padx=20, fill="x")
+    
+    def atualizar_estatisticas():
+        """Atualiza as estatísticas de usuários logados."""
+        # Carrega usuários do arquivo compartilhado
+        USUARIOS_LOGADOS = get_logged_users()
+        
+        # Limpa frame de estatísticas
+        for widget in stats_frame.winfo_children():
+            widget.destroy()
+        
+        ctk.CTkLabel(
+            stats_frame,
+            text="Estatísticas",
+            font=fonte_subtitulo
+        ).pack(pady=10)
+        
+        # Conta por perfil
+        coordenadores = sum(1 for u in USUARIOS_LOGADOS if u["perfil"] == "Coordenador")
+        professores = sum(1 for u in USUARIOS_LOGADOS if u["perfil"] == "Professor")
+        alunos = sum(1 for u in USUARIOS_LOGADOS if u["perfil"] == "Aluno")
+        
+        stats_text = f"Coordenadores: {coordenadores} | Professores: {professores} | Alunos: {alunos}"
+        ctk.CTkLabel(
+            stats_frame,
+            text=stats_text,
+            font=fonte_campos
+        ).pack(pady=5)
+        
+        # Atualiza automaticamente
+        app.after(5000, atualizar_estatisticas)
+    
+    atualizar_estatisticas()
+    
+    # Botão voltar
+    ctk.CTkButton(
+        main_frame,
+        text="<< Voltar ao Menu Principal",
+        font=fonte_botoes,
+        width=300,
+        command=tela_coordenador
+    ).pack(pady=20)
+    
+    # Executa atualização inicial
+    atualizar_lista_usuarios()
+
+
 def limpar_historico_chat():
-    """Limpa todo o histórico do chat."""
-    global MENSAGENS_CHAT
+    """Limpa todo o histórico do chat e atualiza a interface."""
+    global MENSAGENS_CHAT, chat_history_box
     MENSAGENS_CHAT = [{"perfil": "Sistema", "texto": "Início da Conversa. Histórico apagado."}]
     save_chat_history(MENSAGENS_CHAT)
+    
+    # Atualiza a interface se o painel de mensagens existir
+    if chat_history_box is not None:
+        chat_history_box.configure(state="normal")
+        chat_history_box.delete("1.0", "end")
+        chat_history_box.insert("end", "[Sistema]: Início da Conversa. Histórico apagado.\n")
+        chat_history_box.configure(state="disabled")
+        chat_history_box.yview_moveto(1.0)
 
 
 # =========================================================
