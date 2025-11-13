@@ -252,6 +252,259 @@ def fechar_aplicacao():
 
 
 # =========================================================
+# REGIÃO: MANUAL DO SISTEMA
+# =========================================================
+
+def tela_manual_sistema():
+    """Exibe o manual do sistema com instruções específicas para cada perfil."""
+    limpar_tela()
+    app.update_idletasks()
+    app.state('zoomed')
+    app.title(f"Portal Educa - Manual do Sistema - {perfil_logado}")
+    
+    # Define o conteúdo do manual baseado no perfil
+    if perfil_logado == "Coordenador":
+        conteudo_manual = [
+            ("MANUAL DO SISTEMA - COORDENADOR", "titulo"),
+            ("", "espaco"),
+            ("Bem-vindo ao Portal Educa! Este manual explica como utilizar cada funcionalidade disponível para o perfil Coordenador.", "texto"),
+            ("", "espaco"),
+            ("1. GESTÃO DE PROFESSORES", "subtitulo"),
+            ("   • Cadastrar Professor: Permite adicionar novos professores ao sistema.", "item"),
+            ("     - Preencha o nome completo do professor", "subitem"),
+            ("     - Informe o e-mail no formato @professor.educa", "subitem"),
+            ("     - Defina uma senha inicial", "subitem"),
+            ("   • Apagar Professor: Remove um professor do sistema.", "item"),
+            ("     - Selecione o professor na lista", "subitem"),
+            ("     - Confirme a exclusão", "subitem"),
+            ("   • Listar Professores: Visualiza todos os professores cadastrados.", "item"),
+            ("     - Use a busca para filtrar professores", "subitem"),
+            ("", "espaco"),
+            ("2. GESTÃO DE ALUNOS", "subtitulo"),
+            ("   • Cadastrar Aluno: Adiciona novos alunos ao sistema.", "item"),
+            ("     - Preencha os dados do aluno", "subitem"),
+            ("     - Informe o e-mail no formato @aluno.educa", "subitem"),
+            ("   • Apagar Aluno: Remove um aluno do sistema.", "item"),
+            ("   • Listar Alunos: Visualiza todos os alunos cadastrados.", "item"),
+            ("", "espaco"),
+            ("3. GESTÃO DE CURSOS", "subtitulo"),
+            ("   • Cadastrar Curso: Cria um novo curso na instituição.", "item"),
+            ("     - Informe o nome do curso", "subitem"),
+            ("     - Adicione uma descrição (opcional)", "subitem"),
+            ("   • Apagar Curso: Remove um curso do sistema.", "item"),
+            ("   • Listar Cursos: Visualiza todos os cursos disponíveis.", "item"),
+            ("", "espaco"),
+            ("4. GESTÃO DE TURMAS", "subtitulo"),
+            ("   • Cadastrar Turma: Cria uma nova turma.", "item"),
+            ("     - Informe o nome da turma", "subitem"),
+            ("     - Associe a um curso existente", "subitem"),
+            ("   • Apagar Turma: Remove uma turma do sistema.", "item"),
+            ("   • Listar Turmas: Visualiza todas as turmas cadastradas.", "item"),
+            ("", "espaco"),
+            ("5. PERFIS LOGADOS", "subtitulo"),
+            ("   • Visualiza todos os usuários logados simultaneamente no sistema.", "item"),
+            ("     - Veja quem está online no momento", "subitem"),
+            ("     - Acompanhe data e hora de login", "subitem"),
+            ("     - Monitore o tempo online de cada usuário", "subitem"),
+            ("     - Visualize estatísticas por perfil", "subitem"),
+            ("", "espaco"),
+            ("DICAS IMPORTANTES:", "subtitulo"),
+            ("• Sempre verifique os dados antes de confirmar cadastros", "dica"),
+            ("• Use a função de busca para encontrar registros rapidamente", "dica"),
+            ("• O sistema atualiza automaticamente a lista de perfis logados", "dica"),
+            ("• Para sair do sistema, use o botão 'Sair (Logout)'", "dica"),
+        ]
+    elif perfil_logado == "Professor":
+        conteudo_manual = [
+            ("MANUAL DO SISTEMA - PROFESSOR", "titulo"),
+            ("", "espaco"),
+            ("Bem-vindo ao Portal Educa! Este manual explica como utilizar cada funcionalidade disponível para o perfil Professor.", "texto"),
+            ("", "espaco"),
+            ("1. GESTÃO DE TURMAS", "subtitulo"),
+            ("   • Visualizar Turmas: Veja todas as turmas atribuídas a você.", "item"),
+            ("     - A lista mostra as turmas sob sua responsabilidade", "subitem"),
+            ("     - Você pode verificar os alunos de cada turma", "subitem"),
+            ("   • Adicionar Aluno à Turma: Inclui alunos em suas turmas.", "item"),
+            ("     - Selecione a turma desejada", "subitem"),
+            ("     - Informe o nome ou matrícula do aluno", "subitem"),
+            ("", "espaco"),
+            ("2. GESTÃO DE ATIVIDADES", "subtitulo"),
+            ("   • Postar Atividades: Cria e publica atividades para os alunos.", "item"),
+            ("     - Defina o título da atividade", "subitem"),
+            ("     - Adicione uma descrição detalhada", "subitem"),
+            ("     - Informe a data de entrega", "subitem"),
+            ("     - Selecione o tipo (Trabalho, Prova, Projeto, etc.)", "subitem"),
+            ("   • Visualizar Atividades: Veja todas as atividades postadas.", "item"),
+            ("     - Filtre por turma ou data", "subitem"),
+            ("     - Acompanhe o status de entrega dos alunos", "subitem"),
+            ("", "espaco"),
+            ("3. GESTÃO DE NOTAS", "subtitulo"),
+            ("   • Lançar Notas: Registra as notas dos alunos.", "item"),
+            ("     - Selecione o aluno", "subitem"),
+            ("     - Informe a nota obtida", "subitem"),
+            ("     - Associe a uma atividade ou avaliação", "subitem"),
+            ("   • Visualizar Notas: Consulta o desempenho dos alunos.", "item"),
+            ("     - Veja o histórico de notas por aluno", "subitem"),
+            ("     - Analise médias e estatísticas", "subitem"),
+            ("", "espaco"),
+            ("4. GESTÃO DE FREQUÊNCIA", "subtitulo"),
+            ("   • Lançar Frequência: Registra a presença dos alunos.", "item"),
+            ("     - Marque presença ou falta", "subitem"),
+            ("     - Informe a data da aula", "subitem"),
+            ("     - Selecione a turma e disciplina", "subitem"),
+            ("   • Visualizar Frequência: Consulta o registro de presenças.", "item"),
+            ("     - Veja o percentual de frequência por aluno", "subitem"),
+            ("     - Identifique alunos com baixa frequência", "subitem"),
+            ("", "espaco"),
+            ("5. COMUNICAÇÃO", "subtitulo"),
+            ("   • Chat com Alunos: Comunique-se com seus alunos.", "item"),
+            ("     - Envie mensagens para os alunos", "subitem"),
+            ("     - Receba e responda dúvidas", "subitem"),
+            ("     - O histórico de conversas é salvo automaticamente", "subitem"),
+            ("", "espaco"),
+            ("DICAS IMPORTANTES:", "subtitulo"),
+            ("• Sempre verifique os dados antes de lançar notas ou frequência", "dica"),
+            ("• Use datas corretas ao postar atividades", "dica"),
+            ("• Mantenha a comunicação com alunos de forma clara e objetiva", "dica"),
+            ("• Revise as atividades antes de publicá-las", "dica"),
+        ]
+    elif perfil_logado == "Aluno":
+        conteudo_manual = [
+            ("MANUAL DO SISTEMA - ALUNO", "titulo"),
+            ("", "espaco"),
+            ("Bem-vindo ao Portal Educa! Este manual explica como utilizar cada funcionalidade disponível para o perfil Aluno.", "texto"),
+            ("", "espaco"),
+            ("1. INFORMAÇÕES PESSOAIS", "subtitulo"),
+            ("   • Visualizar Informações: Veja seus dados cadastrais.", "item"),
+            ("     - Consulte seu nome, e-mail e matrícula", "subitem"),
+            ("     - Verifique sua turma e curso", "subitem"),
+            ("     - Acesse informações de contato", "subitem"),
+            ("", "espaco"),
+            ("2. AULAS", "subtitulo"),
+            ("   • Verificar Aulas: Consulte sua grade de horários.", "item"),
+            ("     - Veja as disciplinas do seu curso", "subitem"),
+            ("     - Confira horários e salas", "subitem"),
+            ("     - Acompanhe o calendário acadêmico", "subitem"),
+            ("", "espaco"),
+            ("3. ATIVIDADES", "subtitulo"),
+            ("   • Verificar Atividades: Veja todas as atividades atribuídas.", "item"),
+            ("     - Consulte atividades pendentes", "subitem"),
+            ("     - Veja prazos de entrega", "subitem"),
+            ("     - Acompanhe atividades já entregues", "subitem"),
+            ("     - Verifique o status de cada atividade", "subitem"),
+            ("", "espaco"),
+            ("4. AVALIAÇÕES", "subtitulo"),
+            ("   • Verificar Desempenho: Consulte suas notas e avaliações.", "item"),
+            ("     - Veja suas notas por disciplina", "subitem"),
+            ("     - Acompanhe sua média geral", "subitem"),
+            ("     - Consulte resultados de provas e trabalhos", "subitem"),
+            ("   • Verificar Frequência: Veja seu registro de presenças.", "item"),
+            ("     - Consulte seu percentual de frequência", "subitem"),
+            ("     - Veja dias de presença e falta", "subitem"),
+            ("     - Acompanhe sua frequência por disciplina", "subitem"),
+            ("", "espaco"),
+            ("5. COMUNICAÇÃO", "subtitulo"),
+            ("   • Chat com Professores: Comunique-se com seus professores.", "item"),
+            ("     - Envie mensagens para seus professores", "subitem"),
+            ("     - Tire dúvidas sobre atividades e conteúdos", "subitem"),
+            ("     - O histórico de conversas é salvo automaticamente", "subitem"),
+            ("", "espaco"),
+            ("DICAS IMPORTANTES:", "subtitulo"),
+            ("• Verifique regularmente suas atividades e prazos", "dica"),
+            ("• Mantenha-se atualizado sobre suas notas e frequência", "dica"),
+            ("• Use a comunicação para tirar dúvidas com professores", "dica"),
+            ("• Organize-se para não perder prazos de entrega", "dica"),
+        ]
+    else:
+        conteudo_manual = [
+            ("MANUAL DO SISTEMA", "titulo"),
+            ("", "espaco"),
+            ("Perfil não identificado. Por favor, faça login novamente.", "texto"),
+        ]
+    
+    # Frame principal com scroll
+    main_frame = ctk.CTkScrollableFrame(app, width=1000, height=700)
+    main_frame.pack(pady=20, padx=20, fill="both", expand=True)
+    
+    # Renderiza o conteúdo
+    for item in conteudo_manual:
+        texto, tipo = item
+        
+        if tipo == "titulo":
+            ctk.CTkLabel(
+                main_frame,
+                text=texto,
+                font=fonte_titulo,
+                text_color="#2196F3"
+            ).pack(pady=15, padx=20)
+        elif tipo == "subtitulo":
+            ctk.CTkLabel(
+                main_frame,
+                text=texto,
+                font=fonte_subtitulo,
+                text_color="#FF9800"
+            ).pack(pady=10, padx=20, anchor="w")
+        elif tipo == "texto":
+            ctk.CTkLabel(
+                main_frame,
+                text=texto,
+                font=fonte_campos,
+                justify="left",
+                wraplength=900
+            ).pack(pady=5, padx=20, anchor="w")
+        elif tipo == "item":
+            ctk.CTkLabel(
+                main_frame,
+                text=texto,
+                font=fonte_campos,
+                justify="left",
+                wraplength=900
+            ).pack(pady=3, padx=40, anchor="w")
+        elif tipo == "subitem":
+            ctk.CTkLabel(
+                main_frame,
+                text=texto,
+                font=("Arial", 11),
+                text_color="gray",
+                justify="left",
+                wraplength=850
+            ).pack(pady=2, padx=60, anchor="w")
+        elif tipo == "dica":
+            ctk.CTkLabel(
+                main_frame,
+                text=texto,
+                font=("Arial", 11, "italic"),
+                text_color="#4CAF50",
+                justify="left",
+                wraplength=900
+            ).pack(pady=3, padx=20, anchor="w")
+        elif tipo == "espaco":
+            ctk.CTkLabel(
+                main_frame,
+                text=" ",
+                font=("Arial", 5)
+            ).pack(pady=5)
+    
+    # Botão voltar
+    def voltar_menu():
+        """Volta para o menu principal do perfil."""
+        if perfil_logado == "Coordenador":
+            tela_coordenador()
+        elif perfil_logado == "Professor":
+            tela_professor()
+        elif perfil_logado == "Aluno":
+            tela_aluno()
+    
+    ctk.CTkButton(
+        main_frame,
+        text="<< Voltar ao Menu Principal",
+        font=fonte_botoes,
+        width=300,
+        command=voltar_menu
+    ).pack(pady=30)
+
+
+# =========================================================
 # REGIÃO: DECLARAÇÃO DAS TELAS DE PERFIL (EVITA NAMEERROR)
 # =========================================================
 
@@ -272,6 +525,8 @@ def tela_coordenador():
     ctk.CTkButton(app, text="Aluno", font=fonte_botoes, width=300, command=tela_gestao_aluno).pack(pady=10)
     ctk.CTkButton(app, text="Curso", font=fonte_botoes, width=300, command=tela_gestao_curso).pack(pady=10)
     ctk.CTkButton(app, text="Turma", font=fonte_botoes, width=300, command=tela_gestao_turma).pack(pady=10)
+    ctk.CTkButton(app, text="Perfis Logados", font=fonte_botoes, width=300, command=tela_perfis_logados, fg_color="#9C27B0", hover_color="#7B1FA2").pack(pady=10)
+    ctk.CTkButton(app, text="📖 Manual do Sistema", font=fonte_botoes, width=300, command=tela_manual_sistema, fg_color="#607D8B", hover_color="#455A64").pack(pady=10)
     
     # Botão de Sair/Logout
     ctk.CTkButton(app, text="Sair (Logout)", font=fonte_botoes, width=300, command=reiniciar_login).pack(pady=30)
@@ -293,6 +548,7 @@ def tela_professor():
     ctk.CTkButton(app, text="Notas", font=fonte_botoes, width=300, command=tela_gestao_notas_prof).pack(pady=10)
     ctk.CTkButton(app, text="Frequência", font=fonte_botoes, width=300, command=tela_gestao_frequencia_prof).pack(pady=10)
     ctk.CTkButton(app, text="Comunicação", font=fonte_botoes, width=300, command=tela_gestao_comunicacao_prof).pack(pady=10)
+    ctk.CTkButton(app, text="📖 Manual do Sistema", font=fonte_botoes, width=300, command=tela_manual_sistema, fg_color="#607D8B", hover_color="#455A64").pack(pady=10)
     
     # Botão de Sair/Logout
     ctk.CTkButton(app, text="Sair (Logout)", font=fonte_botoes, width=300, command=reiniciar_login).pack(pady=30)
@@ -900,6 +1156,7 @@ def tela_aluno():
     ctk.CTkButton(app, text="Atividades", font=fonte_botoes, width=300, command=tela_gestao_atividades_aluno).pack(pady=10)
     ctk.CTkButton(app, text="Avaliações", font=fonte_botoes, width=300, command=tela_gestao_avaliacoes_aluno).pack(pady=10)
     ctk.CTkButton(app, text="Comunicação", font=fonte_botoes, width=300, command=tela_gestao_comunicacao_aluno).pack(pady=10)
+    ctk.CTkButton(app, text="📖 Manual do Sistema", font=fonte_botoes, width=300, command=tela_manual_sistema, fg_color="#607D8B", hover_color="#455A64").pack(pady=10)
     
     # Botão de Sair/Logout
     ctk.CTkButton(app, text="Sair (Logout)", font=fonte_botoes, width=300, command=reiniciar_login).pack(pady=30)
@@ -1343,6 +1600,7 @@ def tela_coordenador():
     ctk.CTkButton(app, text="Curso", font=fonte_botoes, width=300, command=tela_gestao_curso).pack(pady=10)
     ctk.CTkButton(app, text="Turma", font=fonte_botoes, width=300, command=tela_gestao_turma).pack(pady=10)
     ctk.CTkButton(app, text="Perfis Logados", font=fonte_botoes, width=300, command=tela_perfis_logados, fg_color="#9C27B0", hover_color="#7B1FA2").pack(pady=10)
+    ctk.CTkButton(app, text="📖 Manual do Sistema", font=fonte_botoes, width=300, command=tela_manual_sistema, fg_color="#607D8B", hover_color="#455A64").pack(pady=10)
     
     # Botão de Sair/Logout
     ctk.CTkButton(app, text="Sair (Logout)", font=fonte_botoes, width=300, command=reiniciar_login).pack(pady=30)
